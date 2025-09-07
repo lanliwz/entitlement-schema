@@ -6,44 +6,51 @@ FOR (n:owl__Class) REQUIRE n.uri IS UNIQUE;
 MERGE (policy:owl__Class {
   uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy',
   rdfs__label:'policy',
-  skos__definition:'Logical policy that can bind row and column rules'
+  skos__definition:'Logical policy that can bind row and column rules',
+  policy_name:'Name of the policy.',
+  definition:'Policy logic.'
 });
 
 MERGE (policyGroup:owl__Class {
   uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy_group',
   rdfs__label:'policy group',
-  skos__definition:'Bundle of policies representing a persona or role set'
+  skos__definition:'Bundle of policies representing a persona or role set',
+  policy_group_name:'Name of the group/persona.',
+  definition: 'Group scope.'
 });
 
 MERGE (rowFilterRule:owl__Class {
   uri:'http://upupedu.com/ontology/entitlement/tabular_data/row_filter_rule',
   rdfs__label:'row filter rule',
-  skos__definition:'Row level predicate rule defined on a table column'
+  skos__definition:'Row level predicate rule defined on a table column',
+  filter_operator:'Predicate operator EQUAL/NOT_EQUAL/IN/LIKE/BETWEEN.',
+  match_value:'Value/pattern/list used by operator.'
 });
 
 
 MERGE (columnMaskRule:owl__Class {
   uri:'http://upupedu.com/ontology/entitlement/tabular_data/column_mask_rule',
   rdfs__label:'column mask rule',
-  skos__definition:'Column level masking or transformation rule'
+  skos__definition:'Column level masking or transformation rule',
+  mask_algorithm:'Masking algorithm.'
 });
 
-MERGE (tableCls:owl__Class {
-  uri:'http://upupedu.com/ontology/entitlement/tabular_data/table',
-  rdfs__label:'table',
-  skos__definition:'Relational table identified by schema and name'
-});
 
 MERGE (columnCls:owl__Class {
   uri:'http://upupedu.com/ontology/entitlement/tabular_data/column',
   rdfs__label:'column',
-  skos__definition:'Relational column identified by schema table and column name'
+  skos__definition:'Relational column identified by schema table and column name',
+  schema_name:'schema/owner of target table.',
+  table_name: 'Target table name of the policy.',
+  column_name:'target column of the policy.'
+
 });
 
 MERGE (userCls:owl__Class {
   uri:'http://upupedu.com/ontology/entitlement/tabular_data/user',
   rdfs__label:'user',
-  skos__definition:'Subject or principal that can be entitled to a policy group'
+  skos__definition:'Subject or principal that can be entitled to a policy group',
+  user_id: "Unique user Identity"
 });
 
 // === Class-to-class schema relationships (meta edges) ===
@@ -63,13 +70,12 @@ MERGE (rowFilterRule)-[r3:targetsColumn]->(columnCls)
 MERGE (columnMaskRule)-[r4:targetsColumn]->(columnCls)
   ON CREATE SET r4.skos__definition = "Column mask rule applies to a specific column";
 
-// column → table
-MERGE (columnCls)-[r5:inTable]->(tableCls)
-  ON CREATE SET r5.skos__definition = "Column belongs to a table";
 
 // user → policyGroup
 MERGE (userCls)-[r6:memberOf]->(policyGroup)
-  ON CREATE SET r6.skos__definition = "User is a member of a policy group and inherits its policies";
+  ON CREATE SET r6.skos__definition = "User is a member of a policy group and inherits its policies",
+  r6.status = "Grant status: ACTIVE, REVOKED, PENDING.",r6.granted_at = "Date/time the entitlement was granted.", r6.revoked_at = "Date/time the entitlement was revoked."
+;
 
 // policyGroup → policy
 MERGE (policyGroup)-[r7:includesPolicy]->(policy)
