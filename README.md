@@ -31,22 +31,16 @@ The **entitlement ontology** is designed to represent **fine-grained access cont
 ## Core Concepts
 
 - **policy**: Encapsulates access logic, combining row-level and column-level rules.  
-- **policy group**: A collection of policies aligned to a persona, function, or role set.  
-- **row filter rule**: Defines row-level access by linking a policy to specific schema, table, column, and value constraints.  
-- **column mask rule**: Defines column-level masking or redaction strategies for sensitive fields.  
-- **table** and **column**: Represent physical database structures, with properties such as `schema_name`, `table_name`, and `column_name` captured as data properties on the corresponding nodes.  
+- **policy group**: A collection of policies aligned to a persona, function, or role set.
+- **column**: Represent physical database structures, with properties such as `schema_name`, `table_name`, and `column_name` captured as data properties on the corresponding nodes.  
 - **user**: Represents a subject or principal entitled to policy groups.
 
 ---
 
 ## Relationships
 
-- `(:policy)-[:hasRowRule]->(:row filter rule)` — Policy includes row-level access conditions.  
-- `(:policy)-[:hasColumnRule]->(:column mask rule)` — Policy includes column-level masking logic.  
-- `(:row filter rule)-[:targetsColumn]->(:column)` — Row rule applies to a specific column.  
-- `(:column mask rule)-[:targetsColumn]->(:column)` — Mask rule applies to a specific column.  
-- `(:column)-[:inTable]->(:table)` — Column belongs to a table.  
-- `(:table)-[:hasColumn]->(:column)` — Table exposes one or more columns.  
+- `(:policy)-[:hasRowRule]->(:column)` — Policy includes row-level access conditions. Row rule applies to a specific column.  
+- `(:policy)-[:hasColumnRule]->(:column)` — Policy includes column-level masking logic. Mask rule applies to a specific column.
 - `(:user)-[:memberOf]->(:policy group)` — User inherits policies through group membership.  
 - `(:policy group)-[:includesPolicy]->(:policy)` — Policy groups bundle policies.
 
@@ -75,14 +69,9 @@ Each `:owl__Class` instance carries **required (R)** and **optional (O)** proper
 - `match_value` (R)  
 - `description` (O)  
 
-### column mask rule
-- `column_mask_rule_id` (R)  
-- `schema_name` (R)  
-- `table_name` (R)  
-- `column_name` (R)  
+### [:hasColumnRule]
 - `mask_algorithm` (O)  
 - `description` (O)  
-
 
 
 ### column
