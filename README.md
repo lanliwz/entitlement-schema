@@ -70,13 +70,9 @@ Each `:owl__Class` instance carries **required (R)** and **optional (O)** proper
 - `group_type` (O)  
 - `definition` (O)  
 
-### row filter rule
-- `row_filter_rule_id` (R)  
-- `schema_name` (R)  
-- `table_name` (R)  
-- `column_name` (R)  
-- `filter_operator` (O)  
-- `match_value` (O)  
+### [:hasRowRule]
+- `filter_operator` (R)  
+- `match_value` (R)  
 - `description` (O)  
 
 ### column mask rule
@@ -87,9 +83,7 @@ Each `:owl__Class` instance carries **required (R)** and **optional (O)** proper
 - `mask_algorithm` (O)  
 - `description` (O)  
 
-### table
-- `schema_name` (R)  
-- `table_name` (R)  
+
 
 ### column
 - `schema_name` (R)  
@@ -99,11 +93,12 @@ Each `:owl__Class` instance carries **required (R)** and **optional (O)** proper
 
 ### user
 - `user_id` (R)  
-- `status` (O)  
-- `granted_at` (O)  
-- `revoked_at` (O)  
 
----
+
+### [:memberOf]
+- `status` (R)  
+- `granted_at` (R)  
+- `revoked_at` (O)  
 
 ## Benefits
 
