@@ -64,15 +64,6 @@ Each `:owl__Class` instance carries **required (R)** and **optional (O)** proper
 - `group_type` (O)  
 - `definition` (O)  
 
-### [:hasRowRule]
-- `filter_operator` (R)  
-- `match_value` (R)  
-- `description` (O)  
-
-### [:hasColumnRule]
-- `mask_algorithm` (O)  
-- `description` (O)  
-
 
 ### column
 - `schema_name` (R)  
@@ -83,6 +74,14 @@ Each `:owl__Class` instance carries **required (R)** and **optional (O)** proper
 ### user
 - `user_id` (R)  
 
+### [:hasRowRule]
+- `filter_operator` (R)  
+- `match_value` (R)  
+- `description` (O)  
+
+### [:hasColumnRule]
+- `mask_algorithm` (O)  
+- `description` (O)  
 
 ### [:memberOf]
 - `status` (R)  
