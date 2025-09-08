@@ -1,82 +1,25 @@
-// === Constraints ===
-CREATE CONSTRAINT owl_uri IF NOT EXISTS
-FOR (n:owl__Class) REQUIRE n.uri IS UNIQUE;
-
-// === Classes (all nodes are :owl__Class) ===
-MERGE (policy:owl__Class {
-  uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy',
-  rdfs__label:'policy',
-  skos__definition:'Logical policy that can bind row and column rules',
-  policy_name:'Name of the policy.',
-  definition:'Policy logic.'
-});
-
-MERGE (policyGroup:owl__Class {
-  uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy_group',
-  rdfs__label:'policy group',
-  skos__definition:'Bundle of policies representing a persona or role set',
-  policy_group_name:'Name of the group/persona.',
-  definition: 'Group scope.'
-});
-
-MERGE (rowFilterRule:owl__Class {
-  uri:'http://upupedu.com/ontology/entitlement/tabular_data/row_filter_rule',
-  rdfs__label:'row filter rule',
-  skos__definition:'Row level predicate rule defined on a table column',
-  filter_operator:'Predicate operator EQUAL/NOT_EQUAL/IN/LIKE/BETWEEN.',
-  match_value:'Value/pattern/list used by operator.'
-});
-
-
-MERGE (columnMaskRule:owl__Class {
-  uri:'http://upupedu.com/ontology/entitlement/tabular_data/column_mask_rule',
-  rdfs__label:'column mask rule',
-  skos__definition:'Column level masking or transformation rule',
-  mask_algorithm:'Masking algorithm.'
-});
-
-
-MERGE (columnCls:owl__Class {
-  uri:'http://upupedu.com/ontology/entitlement/tabular_data/column',
-  rdfs__label:'column',
-  skos__definition:'Relational column identified by schema table and column name',
-  schema_name:'schema/owner of target table.',
-  table_name: 'Target table name of the policy.',
-  column_name:'target column of the policy.'
-
-});
-
-MERGE (userCls:owl__Class {
-  uri:'http://upupedu.com/ontology/entitlement/tabular_data/user',
-  rdfs__label:'user',
-  skos__definition:'Subject or principal that can be entitled to a policy group',
-  user_id: "Unique user Identity"
-});
-
-// === Class-to-class schema relationships (meta edges) ===
-// policy → rowFilterRule
-MERGE (policy)-[r1:hasRowRule]->(rowFilterRule)
-  ON CREATE SET r1.skos__definition = "Policy includes a row filter rule that restricts rows in a table";
-
-// policy → columnMaskRule
-MERGE (policy)-[r2:hasColumnRule]->(columnMaskRule)
-  ON CREATE SET r2.skos__definition = "Policy includes a column mask rule that transforms or hides column values";
-
-// rowFilterRule → column
-MERGE (rowFilterRule)-[r3:targetsColumn]->(columnCls)
-  ON CREATE SET r3.skos__definition = "Row filter rule applies to a specific column";
-
-// columnMaskRule → column
-MERGE (columnMaskRule)-[r4:targetsColumn]->(columnCls)
-  ON CREATE SET r4.skos__definition = "Column mask rule applies to a specific column";
-
-
-// user → policyGroup
-MERGE (userCls)-[r6:memberOf]->(policyGroup)
-  ON CREATE SET r6.skos__definition = "User is a member of a policy group and inherits its policies",
-  r6.status = "Grant status: ACTIVE, REVOKED, PENDING.",r6.granted_at = "Date/time the entitlement was granted.", r6.revoked_at = "Date/time the entitlement was revoked."
-;
-
-// policyGroup → policy
-MERGE (policyGroup)-[r7:includesPolicy]->(policy)
-  ON CREATE SET r7.skos__definition = "Policy group includes one or more policies";
+MERGE (n:owl__Class {uri:'http://upupedu.com/ontology/policy'}) ON CREATE SET n.rdfs__label='policy', n.skos__definition='Access control policy combining row level and column level rules';
+MERGE (n:owl__Class {uri:'http://upupedu.com/ontology/policy-group'}) ON CREATE SET n.rdfs__label='policy group', n.skos__definition='Collection of policies aligned to a persona function or role set';
+MERGE (n:owl__Class {uri:'http://upupedu.com/ontology/column'}) ON CREATE SET n.rdfs__label='column', n.skos__definition='Physical database column identified by schema table and column names';
+MERGE (n:owl__Class {uri:'http://upupedu.com/ontology/user'}) ON CREATE SET n.rdfs__label='user', n.skos__definition='Subject or principal that can be entitled to policy groups';
+MERGE (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/policy-id'}) ON CREATE SET dt.rdfs__label='policy id type', dt.skos__definition='Custom data type for policy identifier', dt.xsd__base='xsd:string', dt.xsd__pattern='^[A-Za-z0-9_-]+$';
+MERGE (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/policy-name'}) ON CREATE SET dt.rdfs__label='policy name type', dt.skos__definition='Custom data type for policy name', dt.xsd__base='xsd:string', dt.xsd__minLength=1;
+MERGE (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/policy-definition'}) ON CREATE SET dt.rdfs__label='policy definition type', dt.skos__definition='Custom data type for optional policy description', dt.xsd__base='xsd:string';
+MERGE (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/policy-group-id'}) ON CREATE SET dt.rdfs__label='policy group id type', dt.skos__definition='Custom data type for policy group identifier', dt.xsd__base='xsd:string', dt.xsd__pattern='^[A-Za-z0-9_-]+$';
+MERGE (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/policy-group-name'}) ON CREATE SET dt.rdfs__label='policy group name type', dt.skos__definition='Custom data type for policy group name', dt.xsd__base='xsd:string', dt.xsd__minLength=1;
+MERGE (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/schema-name'}) ON CREATE SET dt.rdfs__label='schema name type', dt.skos__definition='Custom data type for database schema name', dt.xsd__base='xsd:string', dt.xsd__pattern='^[A-Za-z]$';
+MERGE (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/table-name'}) ON CREATE SET dt.rdfs__label='table name type', dt.skos__definition='Custom data type for database table name', dt.xsd__base='xsd:string', dt.xsd__pattern='^[A-Za-z]$';
+MERGE (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/column-name'}) ON CREATE SET dt.rdfs__label='column name type', dt.skos__definition='Custom data type for database column name', dt.xsd__base='xsd:string', dt.xsd__pattern='^[A-Za-z]*$';
+MATCH (p:owl__Class {uri:'http://upupedu.com/ontology/policy'}), (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/policy-id'}) MERGE (p)-[r:hasPolicyId {uri:'http://upupedu.com/ontology/relationship/hasPolicyId'}]->(dt) ON CREATE SET r.rdfs__label='has policy id', r.skos__definition='Policy is constrained to have exactly one policy identifier value of the given data type', r.owl__minQualifiedCardinality=1, r.owl__maxQualifiedCardinality=1;
+MATCH (p:owl__Class {uri:'http://upupedu.com/ontology/policy'}), (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/policy-name'}) MERGE (p)-[r:hasPolicyName {uri:'http://upupedu.com/ontology/relationship/hasPolicyName'}]->(dt) ON CREATE SET r.rdfs__label='has policy name', r.skos__definition='Policy is constrained to have exactly one policy name value of the given data type', r.owl__minQualifiedCardinality=1, r.owl__maxQualifiedCardinality=1;
+MATCH (p:owl__Class {uri:'http://upupedu.com/ontology/policy'}), (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/policy-definition'}) MERGE (p)-[r:hasDefinition {uri:'http://upupedu.com/ontology/relationship/hasDefinition'}]->(dt) ON CREATE SET r.rdfs__label='has definition', r.skos__definition='Policy may have at most one narrative definition value', r.owl__minQualifiedCardinality=0, r.owl__maxQualifiedCardinality=1;
+MATCH (g:owl__Class {uri:'http://upupedu.com/ontology/policy-group'}), (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/policy-group-id'}) MERGE (g)-[r:hasPolicyGroupId {uri:'http://upupedu.com/ontology/relationship/hasPolicyGroupId'}]->(dt) ON CREATE SET r.rdfs__label='has policy group id', r.skos__definition='Policy group is constrained to have exactly one identifier value of the given data type', r.owl__minQualifiedCardinality=1, r.owl__maxQualifiedCardinality=1;
+MATCH (g:owl__Class {uri:'http://upupedu.com/ontology/policy-group'}), (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/policy-group-name'}) MERGE (g)-[r:hasPolicyGroupName {uri:'http://upupedu.com/ontology/relationship/hasPolicyGroupName'}]->(dt) ON CREATE SET r.rdfs__label='has policy group name', r.skos__definition='Policy group is constrained to have exactly one name value of the given data type', r.owl__minQualifiedCardinality=1, r.owl__maxQualifiedCardinality=1;
+MATCH (g:owl__Class {uri:'http://upupedu.com/ontology/policy-group'}), (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/policy-definition'}) MERGE (g)-[r:hasDefinition {uri:'http://upupedu.com/ontology/relationship/hasPolicyGroupDefinition'}]->(dt) ON CREATE SET r.rdfs__label='has definition', r.skos__definition='Policy group may have at most one narrative definition value', r.owl__minQualifiedCardinality=0, r.owl__maxQualifiedCardinality=1;
+MATCH (c:owl__Class {uri:'http://upupedu.com/ontology/column'}), (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/schema-name'}) MERGE (c)-[r:hasSchemaName {uri:'http://upupedu.com/ontology/relationship/hasSchemaName'}]->(dt) ON CREATE SET r.rdfs__label='has schema name', r.skos__definition='Column is constrained to have exactly one schema name value of the given data type', r.owl__minQualifiedCardinality=1, r.owl__maxQualifiedCardinality=1;
+MATCH (c:owl__Class {uri:'http://upupedu.com/ontology/column'}), (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/table-name'}) MERGE (c)-[r:hasTableName {uri:'http://upupedu.com/ontology/relationship/hasTableName'}]->(dt) ON CREATE SET r.rdfs__label='has table name', r.skos__definition='Column is constrained to have exactly one table name value of the given data type', r.owl__minQualifiedCardinality=1, r.owl__maxQualifiedCardinality=1;
+MATCH (c:owl__Class {uri:'http://upupedu.com/ontology/column'}), (dt:owl__Class {uri:'http://upupedu.com/ontology/datatype/column-name'}) MERGE (c)-[r:hasColumnName {uri:'http://upupedu.com/ontology/relationship/hasColumnName'}]->(dt) ON CREATE SET r.rdfs__label='has column name', r.skos__definition='Column is constrained to have exactly one column name value of the given data type', r.owl__minQualifiedCardinality=1, r.owl__maxQualifiedCardinality=1;
+MATCH (p:owl__Class {uri:'http://upupedu.com/ontology/policy'}), (c:owl__Class {uri:'http://upupedu.com/ontology/column'}) MERGE (p)-[r:hasRowRule {uri:'http://upupedu.com/ontology/relationship/hasRowRule'}]->(c) ON CREATE SET r.rdfs__label='has row rule', r.skos__definition='Policy defines one or more row level predicates that reference a target column', r.owl__minQualifiedCardinality=0, r.owl__maxQualifiedCardinality=-1;
+MATCH (p:owl__Class {uri:'http://upupedu.com/ontology/policy'}), (c:owl__Class {uri:'http://upupedu.com/ontology/column'}) MERGE (p)-[r:hasColumnRule {uri:'http://upupedu.com/ontology/relationship/hasColumnRule'}]->(c) ON CREATE SET r.rdfs__label='has column rule', r.skos__definition='Policy defines one or more column masking rules that apply to a target column', r.owl__minQualifiedCardinality=0, r.owl__maxQualifiedCardinality=-1;
+MATCH (u:owl__Class {uri:'http://upupedu.com/ontology/user'}), (g:owl__Class {uri:'http://upupedu.com/ontology/policy-group'}) MERGE (u)-[r:memberOf {uri:'http://upupedu.com/ontology/relationship/memberOf'}]->(g) ON CREATE SET r.rdfs__label='member of', r.skos__definition='User inherits policies through membership in a policy group', r.owl__minQualifiedCardinality=0, r.owl__maxQualifiedCardinality=-1;
+MATCH (g:owl__Class {uri:'http://upupedu.com/ontology/policy-group'}), (p:owl__Class {uri:'http://upupedu.com/ontology/policy'}) MERGE (g)-[r:includesPolicy {uri:'http://upupedu.com/ontology/relationship/includesPolicy'}]->(p) ON CREATE SET r.rdfs__label='includes policy', r.skos__definition='Policy group bundles one or more policies', r.owl__minQualifiedCardinality=0, r.owl__maxQualifiedCardinality=-1;
