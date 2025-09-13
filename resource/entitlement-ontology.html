@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ontology Diagram</title>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "default" });
+  </script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+      background: #f9f9f9;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+    .mermaid {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1em;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1>Ontology Class Diagram</h1>
+  <div class="mermaid">
+    classDiagram
+
+    class policy_group {
+      +policy_group_id : string
+      +policy_group_name : string
+      +definition? : string
+    }
+
+    class policy {
+      +policy_id : string
+      +policy_name : string
+      +definition? : string
+    }
+
+    class column {
+      +column_id : string
+      +column_name : string
+      +schema_name : string
+      +table_name : string
+    }
+
+    class table {
+      +table_id : string
+      +table_name : string
+    }
+
+    class schema {
+      +schema_id : string
+      +schema_name : string
+    }
+
+    class user {
+      +user_id : string
+      +user_name : string
+    }
+
+    policy_group --> policy : includesPolicy
+    user --> policy_group : memberOf
+    policy --> column : hasRowRule
+    policy --> column : hasColumnRule
+    table --> column : containsColumn
+    table --> schema : belongsToSchema
+  </div>
+</body>
+</html>

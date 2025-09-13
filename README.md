@@ -20,9 +20,11 @@ This design provides:
 
 By combining these features, the schema ensures that users can access only the data necessary for their role, thereby strengthening overall data protection and facilitating compliance with regulatory requirements.
 
-![policy-group-relationship.png](resource%2Fpolicy-group-relationship.png)
+
 
 # Ontology / Neo4j Schema Design
+
+![entitlement-ontology.png](resource/entitlement-ontology.png)
 
 The **entitlement ontology** is designed to represent **fine-grained access control policies** in a graph model, enabling flexible reasoning, visualization, and governance. All entities are modeled as `:owl__Class` nodes with a **lowercase `rdfs__label`** and a **`skos__definition`** describing their semantics.  
 
