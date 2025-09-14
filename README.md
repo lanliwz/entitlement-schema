@@ -68,8 +68,7 @@ Each `:owl__Class` instance carries **required (R)** and **optional (O)** proper
 
 
 ### column
-- `schema_name` (R)  
-- `table_name` (R)  
+- `column_id` (R)  
 - `column_name` (R)  
 - Optional metadata: `data_type`, `data_length`, `nullable`, etc.  
 
