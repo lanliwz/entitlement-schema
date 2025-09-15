@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ontology Mermaid Diagram (v10.9.4)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; background: #f7f7fb; }
+    h1 { margin: 0 0 1rem; font-size: 1.6rem; }
+    .card { background: #fff; border: 1px solid #e6e6ef; border-radius: 12px; padding: 1rem; box-shadow: 0 6px 20px rgba(0,0,0,0.04); }
+    .hint { color: #555; margin: 0.5rem 0 1rem; }
+    .footer { margin-top: 1.5rem; color: #777; font-size: 0.9rem; }
+  </style>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "default" });
+  </script>
+</head>
+<body>
+  <h1>Ontology Class Diagram (Mermaid v10.9.4)</h1>
+  <p class="hint">Mermaid <code>classDiagram</code> of ontology with data properties and relationships. Notes are single-line with <code>&lt;br/&gt;</code>.</p>
+  <div class="card">
+    <div class="mermaid">
+classDiagram
+class Policy {
+  &lt;&lt;owl__Class&gt;&gt;
+  +hasPolicyId : PolicyIdDatatype
+  +hasPolicyName : PolicyNameDatatype
+  +hasDefinition : PolicyDefinitionDatatype (optional)
+}
+class PolicyGroup {
+  &lt;&lt;owl__Class&gt;&gt;
+  +hasPolicyGroupId : PolicyGroupIdDatatype
+  +hasPolicyGroupName : PolicyGroupNameDatatype
+}
+class Column {
+  &lt;&lt;owl__Class&gt;&gt;
+  +hasColumnId : ColumnIdDatatype
+  +hasColumnName : ColumnNameDatatype
+}
+class Table {
+  &lt;&lt;owl__Class&gt;&gt;
+  +hasTableId : TableIdDatatype
+  +hasTableName : TableNameDatatype
+}
+class Schema {
+  &lt;&lt;owl__Class&gt;&gt;
+  +hasSchemaId : SchemaIdDatatype
+  +hasSchemaName : SchemaNameDatatype
+}
+class User {
+  &lt;&lt;owl__Class&gt;&gt;
+  +hasUserId : UserIdDatatype
+}
+
+Policy "0..*" --> "0..*" Column : hasRowRule
+Policy "0..*" --> "0..*" Column : hasColumnRule
+PolicyGroup "0..*" --> "0..*" Policy : includesPolicy
+Column "1" --> "1" Table : belongsToTable
+Table "1" --> "1" Schema : belongsToSchema
+User "0..*" --> "0..*" PolicyGroup : memberOf
+
+note for Policy "rdfs__label: policy<br/>skos__definition: Encapsulates access logic combining row-level and column-level rules.<br/>uri: http://upupedu.com/ontology/entitlement/tabular_data/policy<br/>note: Each policy must have a policy_id and policy_name; may include definition."
+note for PolicyGroup "rdfs__label: policy group<br/>skos__definition: A collection of policies aligned to a persona function or role set.<br/>uri: http://upupedu.com/ontology/entitlement/tabular_data/policy_group<br/>note: Each policy group must have a policy_group_id and policy_group_name; may include definition."
+note for Column "rdfs__label: column<br/>skos__definition: Represents a physical database column.<br/>uri: http://upupedu.com/ontology/entitlement/tabular_data/column"
+note for Table "rdfs__label: table<br/>skos__definition: Database table grouping columns within a schema.<br/>uri: http://upupedu.com/ontology/entitlement/tabular_data/table<br/>note: Contains columns such as customer_email."
+note for Schema "rdfs__label: schema<br/>skos__definition: Database schema grouping tables within a database catalog.<br/>uri: http://upupedu.com/ontology/entitlement/tabular_data/schema<br/>note: Schema for tables."
+note for User "rdfs__label: user<br/>skos__definition: Subject or principal entitled to policy groups.<br/>uri: http://upupedu.com/ontology/entitlement/tabular_data/user<br/>note: Example user Alice with membership to a policy group."
+
+    </div>
+  </div>
+
+  <div class="footer">
+    Mermaid CDN: <code>mermaid@10</code> — tested with v10.9.4.
+  </div>
+</body>
+</html>

@@ -1,0 +1,84 @@
+classDiagram
+%% =========================
+%% Classes with attributes
+%% =========================
+class Policy {
+  <<owl__Class>>
+  +hasPolicyId : PolicyIdDatatype
+  +hasPolicyName : PolicyNameDatatype
+  +hasDefinition? : PolicyDefinitionDatatype
+}
+
+class PolicyGroup {
+  <<owl__Class>>
+  +hasPolicyGroupId : PolicyGroupIdDatatype
+  +hasPolicyGroupName : PolicyGroupNameDatatype
+}
+
+class Column {
+  <<owl__Class>>
+  +hasColumnId : ColumnIdDatatype
+  +hasColumnName : ColumnNameDatatype
+}
+
+class Table {
+  <<owl__Class>>
+  +hasTableId : TableIdDatatype
+  +hasTableName : TableNameDatatype
+}
+
+class Schema {
+  <<owl__Class>>
+  +hasSchemaId : SchemaIdDatatype
+  +hasSchemaName : SchemaNameDatatype
+}
+
+class User {
+  <<owl__Class>>
+  +hasUserId : UserIdDatatype
+}
+
+%% =========================
+%% Relationships (object properties)
+%% Multiplicities reflect min/max where provided
+%% =========================
+%% Policy -> Column (row rule)
+Policy "0..*" --> "0..*" Column : hasRowRule
+%% Policy -> Column (column rule)
+Policy "0..*" --> "0..*" Column : hasColumnRule
+%% PolicyGroup -> Policy
+PolicyGroup "0..*" --> "0..*" Policy : includesPolicy
+%% Column -> Table (each column belongs to exactly one table)
+Column "1" --> "1" Table : belongsToTable
+%% Table -> Schema (each table belongs to exactly one schema)
+Table "1" --> "1" Schema : belongsToSchema
+%% User -> PolicyGroup (membership)
+User "0..*" --> "0..*" PolicyGroup : memberOf
+
+%% =========================
+%% Notes for class annotations (rdfs__label, skos__definition, uri, note)
+%% =========================
+
+
+note for Policy "rdfs__label: policy
+skos__definition: Encapsulates access logic combining row-level and column-level rules.
+note: Each policy must have a policy_id and policy_name; may include definition."
+
+note for PolicyGroup "rdfs__label: policy group
+skos__definition: A collection of policies aligned to a persona function or role set.
+note: Each policy group must have a policy_group_id and policy_group_name; may include definition."
+
+note for Column "rdfs__label: column
+skos__definition: Represents a physical database column."
+
+note for Table "rdfs__label: table
+skos__definition: Database table grouping columns within a schema.
+note: Contains columns such as customer_email."
+
+note for Schema "rdfs__label: schema
+skos__definition: Database schema grouping tables within a database catalog.
+note: Schema for tables."
+
+note for User "rdfs__label: user
+skos__definition: Subject or principal entitled to policy groups.
+note: Example user Alice with membership to a policy group."
