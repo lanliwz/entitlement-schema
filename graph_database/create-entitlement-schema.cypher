@@ -15,19 +15,6 @@ MERGE (dt_table_id:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/
 MERGE (dt_table_name:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/table_name'}) ON CREATE SET dt_table_name.rdfs__label='table name datatype', dt_table_name.skos__definition='Datatype node for table_name property.', dt_table_name.xml__datatype='xsd:string', dt_table_name.format='text';
 MERGE (dt_schema_id:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/schema_id'}) ON CREATE SET dt_schema_id.rdfs__label='schema id datatype', dt_schema_id.skos__definition='Datatype node for schema_id property.', dt_schema_id.xml__datatype='xsd:string', dt_schema_id.format='uuid';
 MERGE (dt_schema_name:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/schema_name'}) ON CREATE SET dt_schema_name.rdfs__label='schema name datatype', dt_schema_name.skos__definition='Datatype node for schema_name property.', dt_schema_name.xml__datatype='xsd:string', dt_schema_name.format='text';
-MERGE (dt_user_id:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/user_id'}) ON CREATE SET dt_user_id.rdfs__label='user id datatype', dt_user_id.skos__definition='Datatype node for user_id property.', dt_user_id.xml__datatype='xsd:string', dt_user_id.format='uuid';
-MATCH (policy:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy'}), (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/policy_id'}) WITH policy, dt MERGE (policy)-[r:hasPolicyId {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy/hasPolicyId', rdfs__label:'has policy id', skos__definition:'Links policy to its policy_id datatype.', owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1}]->(dt);
-MATCH (policy:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy'}), (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/policy_name'}) WITH policy, dt MERGE (policy)-[r:hasPolicyName {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy/hasPolicyName', rdfs__label:'has policy name', skos__definition:'Links policy to its policy_name datatype.', owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1}]->(dt);
-MATCH (policy:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy'}), (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/policy_definition'}) WITH policy, dt MERGE (policy)-[r:hasDefinition {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy/hasDefinition', rdfs__label:'has definition', skos__definition:'Optional textual definition for a policy.', owl__minQualifiedCardinality:0, owl__maxQualifiedCardinality:1}]->(dt);
-MATCH (pg:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy_group'}), (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/policy_group_id'}) WITH pg, dt MERGE (pg)-[r:hasPolicyGroupId {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy_group/hasPolicyGroupId', rdfs__label:'has policy group id', skos__definition:'Links policy group to its id datatype.', owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1}]->(dt);
-MATCH (pg:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy_group'}), (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/policy_group_name'}) WITH pg, dt MERGE (pg)-[r:hasPolicyGroupName {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy_group/hasPolicyGroupName', rdfs__label:'has policy group name', skos__definition:'Links policy group to its name datatype.', owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1}]->(dt);
-MATCH (col:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/column'}), (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/column_id'}) WITH col, dt MERGE (col)-[r:hasColumnId {uri:'http://upupedu.com/ontology/entitlement/tabular_data/column/customer_email/hasColumnId', rdfs__label:'has column id', skos__definition:'Links column to its id datatype.', owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1}]->(dt);
-MATCH (col:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/column'}), (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/column_name'}) WITH col, dt MERGE (col)-[r:hasColumnName {uri:'http://upupedu.com/ontology/entitlement/tabular_data/column/customer_email/hasColumnName', rdfs__label:'has column name', skos__definition:'Links column to its name datatype.', owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1}]->(dt);
-MATCH (t:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/table'}), (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/table_id'}) WITH t, dt MERGE (t)-[r:hasTableId {uri:'http://upupedu.com/ontology/entitlement/tabular_data/table/customer/hasTableId', rdfs__label:'has table id', skos__definition:'Links table to its id datatype.', owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1}]->(dt);
-MATCH (t:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/table'}), (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/table_name'}) WITH t, dt MERGE (t)-[r:hasTableName {uri:'http://upupedu.com/ontology/entitlement/tabular_data/table/customer/hasTableName', rdfs__label:'has table name', skos__definition:'Links table to its name datatype.', owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1}]->(dt);
-MATCH (s:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/schema'}), (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/schema_id'}) WITH s, dt MERGE (s)-[r:hasSchemaId {uri:'http://upupedu.com/ontology/entitlement/tabular_data/schema/sales/hasSchemaId', rdfs__label:'has schema id', skos__definition:'Links schema to its id datatype.', owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1}]->(dt);
-MATCH (s:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/schema'}), (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/schema_name'}) WITH s, dt MERGE (s)-[r:hasSchemaName {uri:'http://upupedu.com/ontology/entitlement/tabular_data/schema/sales/hasSchemaName', rdfs__label:'has schema name', skos__definition:'Links schema to its name datatype.', owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1}]->(dt);
-MATCH (u:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/user'}), (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/user_id'}) WITH u, dt MERGE (u)-[r:hasUserId {uri:'http://upupedu.com/ontology/entitlement/tabular_data/user/alice/hasUserId', rdfs__label:'has user id', skos__definition:'Links user to its user_id datatype.', owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1}]->(dt);
 //hasRowRule
 MATCH (policy:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy'}),
       (col:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/column'})
@@ -59,3 +46,110 @@ ON CREATE SET
   r.skos__definition = 'A table is always contained in exactly one schema.',
   r.owl__minQualifiedCardinality = 1,
   r.owl__maxQualifiedCardinality = 1;
+MATCH (policy:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy'}),
+      (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/policy_id'})
+MERGE (policy)-[r:policyId {
+    uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy/policyId',
+    rdfs__label:'policy id',
+    skos__definition:'Links policy to its policy_id datatype.',
+    owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1
+}]->(dt);
+
+MATCH (policy:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy'}),
+      (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/policy_name'})
+MERGE (policy)-[r:policyName {
+    uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy/policyName',
+    rdfs__label:'policy name',
+    skos__definition:'Links policy to its policy_name datatype.',
+    owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1
+}]->(dt);
+
+MATCH (policy:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy'}),
+      (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/policy_definition'})
+MERGE (policy)-[r:definition {
+    uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy/definition',
+    rdfs__label:'definition',
+    skos__definition:'Optional textual definition for a policy.',
+    owl__minQualifiedCardinality:0, owl__maxQualifiedCardinality:1
+}]->(dt);
+
+MATCH (pg:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy_group'}),
+      (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/policy_group_id'})
+MERGE (pg)-[r:policyGroupId {
+    uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy_group/policyGroupId',
+    rdfs__label:'policy group id',
+    skos__definition:'Links policy group to its id datatype.',
+    owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1
+}]->(dt);
+
+MATCH (pg:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy_group'}),
+      (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/policy_group_name'})
+MERGE (pg)-[r:policyGroupName {
+    uri:'http://upupedu.com/ontology/entitlement/tabular_data/policy_group/policyGroupName',
+    rdfs__label:'policy group name',
+    skos__definition:'Links policy group to its name datatype.',
+    owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1
+}]->(dt);
+
+MATCH (col:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/column'}),
+      (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/column_id'})
+MERGE (col)-[r:columnId {
+    uri:'http://upupedu.com/ontology/entitlement/tabular_data/column/customer_email/columnId',
+    rdfs__label:'column id',
+    skos__definition:'Links column to its id datatype.',
+    owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1
+}]->(dt);
+
+MATCH (col:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/column'}),
+      (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/column_name'})
+MERGE (col)-[r:columnName {
+    uri:'http://upupedu.com/ontology/entitlement/tabular_data/column/customer_email/columnName',
+    rdfs__label:'column name',
+    skos__definition:'Links column to its name datatype.',
+    owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1
+}]->(dt);
+
+MATCH (t:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/table'}),
+      (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/table_id'})
+MERGE (t)-[r:tableId {
+    uri:'http://upupedu.com/ontology/entitlement/tabular_data/table/customer/tableId',
+    rdfs__label:'table id',
+    skos__definition:'Links table to its id datatype.',
+    owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1
+}]->(dt);
+
+MATCH (t:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/table'}),
+      (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/table_name'})
+MERGE (t)-[r:tableName {
+    uri:'http://upupedu.com/ontology/entitlement/tabular_data/table/customer/tableName',
+    rdfs__label:'table name',
+    skos__definition:'Links table to its name datatype.',
+    owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1
+}]->(dt);
+
+MATCH (s:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/schema'}),
+      (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/schema_id'})
+MERGE (s)-[r:schemaId {
+    uri:'http://upupedu.com/ontology/entitlement/tabular_data/schema/sales/schemaId',
+    rdfs__label:'schema id',
+    skos__definition:'Links schema to its id datatype.',
+    owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1
+}]->(dt);
+
+MATCH (s:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/schema'}),
+      (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/schema_name'})
+MERGE (s)-[r:schemaName {
+    uri:'http://upupedu.com/ontology/entitlement/tabular_data/schema/sales/schemaName',
+    rdfs__label:'schema name',
+    skos__definition:'Links schema to its name datatype.',
+    owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1
+}]->(dt);
+
+MATCH (u:owl__Class {uri:'http://upupedu.com/ontology/entitlement/tabular_data/user'}),
+      (dt:rdfs__Datatype {uri:'http://upupedu.com/ontology/entitlement/tabular_data/datatype/user_id'})
+MERGE (u)-[r:userId {
+    uri:'http://upupedu.com/ontology/entitlement/tabular_data/user/alice/userId',
+    rdfs__label:'user id',
+    skos__definition:'Links user to its user_id datatype.',
+    owl__minQualifiedCardinality:1, owl__maxQualifiedCardinality:1
+}]->(dt);
