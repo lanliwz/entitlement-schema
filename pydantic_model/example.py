@@ -1,42 +1,66 @@
 from pydantic_model.pydantic_entilement_model import *
 # Example data instantiation
 
-sales_schema = Schema(
-    schema_id="sch1",
-    schema_name="sales"
+# OpenAI Prompt
+# create example for exployee table, which has department column, \n
+# which has row level policy associated with department name, \n
+# and ssn, which has masking policy for last 4 digit \n
+
+# ---------- Core nodes ----------
+hr_schema = Schema(
+    schema_id="sch_hr",
+    schema_name="hr"
 )
 
-customer_table = Table(
-    table_id="tbl1",
-    table_name="customer",
-    belongsToSchema=sales_schema
+employee_table = Table(
+    table_id="tbl_employee",
+    table_name="employee",
+    belongsToSchema=hr_schema
 )
 
-customer_email_col = Column(
-    column_id="col1",
-    column_name="customer_email",
-    belongsToTable=customer_table
+department_col = Column(
+    column_id="col_department",
+    column_name="department",
+    belongsToTable=employee_table
 )
 
-mask_email_policy = Policy(
-    policy_id="pol1",
-    policy_name="mask_email",
-    definition="Mask the customer email for non-admin users",
-    hasRowRule=[customer_email_col],
-    hasColumnRule=[customer_email_col]
+ssn_col = Column(
+    column_id="col_ssn",
+    column_name="ssn",
+    belongsToTable=employee_table
 )
 
-analysts_group = PolicyGroup(
-    policy_group_id="pg1",
-    policy_group_name="analysts",
-    includesPolicy=[mask_email_policy]
+# ---------- Policies ----------
+# Row-level policy: only rows where department='Engineering'
+dept_row_policy = Policy(
+    policy_id="pol_dept_eng_only",
+    policy_name="department_engineering_only",
+    definition="Allow only rows where department = 'Engineering'",
+    hasRowRule=[department_col]      # link to the department column
 )
 
-alice_user = User(
-    user_id="u1",
-    username="alice",
-    memberOf=[analysts_group]
+# Column masking policy: mask SSN to show only last 4 digits
+ssn_mask_policy = Policy(
+    policy_id="pol_mask_ssn_last4",
+    policy_name="mask_ssn_last4",
+    definition="Mask SSN for non-privileged users, exposing only the last 4 digits",
+    hasColumnRule=[ssn_col]          # link to the ssn column
 )
 
+# Optional: a policy group bundling both policies
+hr_analysts_group = PolicyGroup(
+    policy_group_id="pg_hr_analysts",
+    policy_group_name="HR Analysts",
+    includesPolicy=[dept_row_policy, ssn_mask_policy]
+)
+
+# Optional: a user who belongs to the policy group
+alice = User(
+    user_id="u_alice",
+    username="Alice",
+    memberOf=[hr_analysts_group]
+)
 # ---------- Example usage ----------
-print(alice_user.model_dump())
+import pydantic
+print(pydantic.version.VERSION)
+print(alice.model_dump_json(indent=2))
