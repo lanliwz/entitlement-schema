@@ -64,18 +64,17 @@ Each relationship is annotated with a **`skos__definition`** to capture its sema
 
 ## Data Properties
 
-- (:Table) is a node, it has data property hasTableId with data type TableIdDatatype
-- (:Table) is a node, it has data property hasTableName with data type TableNameDatatype
-- (:User) is a node, it has data property hasUserId with data type UserIdDatatype
-- (:Policy) is a node, it has data property hasPolicyId with data type PolicyIdDatatype
-- (:Policy) is a node, it has data property hasPolicyName with data type PolicyNameDatatype
-- (:Policy) is a node, it has data property hasDefinition with data type PolicyDefinitionDatatype
-- (:PolicyGroup) is a node, it has data property hasPolicyGroupId with data type PolicyGroupIdDatatype
-- (:PolicyGroup) is a node, it has data property hasPolicyGroupName with data type PolicyGroupNameDatatype
-- (:Column) is a node, it has data property hasColumnId with data type ColumnIdDatatype
-- (:Column) is a node, it has data property hasColumnName with data type ColumnNameDatatype
-- (:Schema) is a node, it has data property hasSchemaId with data type SchemaIdDatatype
-- (:Schema) is a node, it has data property hasSchemaName with data type SchemaNameDatatype 
+- (:Table) has data property tableName with data type TableNameDatatype
+- (:Schema) has data property schemaId with data type SchemaIdDatatype
+- (:Schema) has data property schemaName with data type SchemaNameDatatype
+- (:Policy) has data property policyId with data type PolicyIdDatatype
+- (:Policy) has data property policyName with data type PolicyNameDatatype
+- (:Policy) has data property definition with data type PolicyDefinitionDatatype
+- (:PolicyGroup) has data property policyGroupId with data type PolicyGroupIdDatatype
+- (:PolicyGroup) has data property policyGroupName with data type PolicyGroupNameDatatype
+- (:Column) has data property columnId with data type ColumnIdDatatype
+- (:Column) has data property columnName with data type ColumnNameDatatype
+- (:Table) has data property tableId with data type TableIdDatatype 
 
 ## Benefits
 
