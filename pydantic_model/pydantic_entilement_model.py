@@ -20,7 +20,7 @@ class Policy(BaseModel):
         return {
             "from_policy": self.policy_id,
             "to_column": column_id,
-            "type": "hasRowRule",
+            "relationship": "hasRowRule",
             "expression": expression,
         }
 
@@ -31,7 +31,7 @@ class Policy(BaseModel):
         return {
             "from_policy": self.policy_id,
             "to_column": column_id,
-            "type": "hasColumnRule",
+            "relationship": "hasColumnRule",
             "mask_expression": mask_expression,
         }
 
@@ -51,7 +51,7 @@ class Table(BaseModel):
         return {
             "from_table": self.table_id,
             "to_schema": schema_id,
-            "type": "belongsToSchema",
+            "relationship": "belongsToSchema",
         }
 
 
@@ -79,7 +79,7 @@ class User(BaseModel):
         return {
             "from_user": self.user_id,
             "to_policy_group": policy_group_id,
-            "type": "memberOf",
+            "relationship": "memberOf",
         }
 
 
@@ -98,7 +98,7 @@ class PolicyGroup(BaseModel):
         return {
             "from_policy_group": self.policy_group_id,
             "to_policy": policy_id,
-            "type": "includesPolicy",
+            "relationship": "includesPolicy",
         }
 
 
@@ -116,5 +116,5 @@ class Column(BaseModel):
         return {
             "from_column": self.column_id,
             "to_table": table_id,
-            "type": "belongsToTable",
+            "relationship": "belongsToTable",
         }
