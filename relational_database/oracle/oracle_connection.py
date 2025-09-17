@@ -25,20 +25,13 @@ def oracle_connection():
     except Exception as e:
         return [{"error": str(e)}]
 
-def oracle_query(sql: str) -> List[Dict[str, Any]]:
+def oracle_query(sql: str, conn) -> List[Dict[str, Any]]:
     try:
-        conn = jaydebeapi.connect(
-            "oracle.jdbc.OracleDriver",
-            url,
-            [user, password],
-            jdbc_jar,
-        )
         curs = conn.cursor()
         curs.execute(sql)
         cols = [d[0] for d in curs.description]
         rows = [dict(zip(cols, r)) for r in curs.fetchall()]
         curs.close()
-        conn.close()
         return rows
     except Exception as e:
         return [{"error": str(e)}]
