@@ -1,4 +1,4 @@
-from pydantic_model.pydantic_entilement_model import *
+from python_model.entitlement_pydantic_class import *
 # Example data instantiation
 
 # OpenAI Prompt
