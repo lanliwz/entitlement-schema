@@ -18,6 +18,17 @@ def get_secret(section: str, key: str, filename: str = "system_config.ini") -> s
         KeyError: If the section or key does not exist.
     """
     # Start searching upward from current working directory
+    config = get_config(filename)
+
+    if section not in config:
+        raise KeyError(f"Section '{section}' not found in {filename}")
+    if key not in config[section]:
+        raise KeyError(f"Key '{key}' not found in section '{section}'")
+
+    return config[section][key]
+
+def get_config(filename: str = "system_config.ini") -> str:
+    # Start searching upward from current working directory
     current_dir = os.path.abspath(os.getcwd())
 
     while True:
@@ -31,12 +42,6 @@ def get_secret(section: str, key: str, filename: str = "system_config.ini") -> s
 
     config = configparser.ConfigParser()
     config.read(config_path)
-
-    if section not in config:
-        raise KeyError(f"Section '{section}' not found in {filename}")
-    if key not in config[section]:
-        raise KeyError(f"Key '{key}' not found in section '{section}'")
-
-    return config[section][key]
+    return config
 
 # print(get_secret('oracle','ORACLE_USER'))
