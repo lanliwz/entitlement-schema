@@ -19,15 +19,6 @@ def mysql_connection():
         - jaydebeapi connection on success
         - [{'error': '<message>'}] on failure (keeps parity with your oracle_* helpers)
     """
-    missing = [name for name, val in {
-        "mysql.JDBC_JAR": JDBC_JAR,
-        "mysql.JDBC_URL": JDBC_URL,
-        "mysql.USERNAME": USERNAME,
-        "mysql.PASSWORD": PASSWORD,
-    }.items() if not val]
-
-    if missing:
-        return [{"error": f"Missing config keys: {', '.join(missing)}"}]
 
     try:
         conn = jaydebeapi.connect(
