@@ -39,6 +39,11 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 
+from secret.secret_util import get_config
+
+# get all secret and config params from config
+config = get_config()
+
 # ----------------------- Config -----------------------------------
 DEFAULT_MODEL = "gpt-4.1-mini"
 REASONING_EFFORT = "medium"
@@ -71,10 +76,10 @@ def lookup_user(username: str) -> Dict[str, Any]:
 def oracle_query(sql: str) -> List[Dict[str, Any]]:
     """Run a SQL query against Oracle DB via JDBC (jaydebeapi)."""
     import jaydebeapi
-    jdbc_jar = os.getenv("ORACLE_JDBC_JAR")
-    url = os.getenv("ORACLE_URL")
-    user = os.getenv("ORACLE_USER")
-    password = os.getenv("ORACLE_PASSWORD")
+    jdbc_jar = config['oracle']["JDBC_JAR"]
+    url = config['oracle']["JDBC_URL"]
+    user = config['oracle']["USERNAME"]
+    password = config['oracle']["PASSWORD"]
     if not all([jdbc_jar, url, user, password]):
         return [{"error": "Set ORACLE_JDBC_JAR, ORACLE_URL, ORACLE_USER, ORACLE_PASSWORD env vars"}]
     try:
