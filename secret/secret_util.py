@@ -44,4 +44,4 @@ def get_config(filename: str = "system_config.ini") -> str:
     config.read(config_path)
     return config
 
-# print(get_secret('oracle','ORACLE_USER'))
+# print(get_secret('oracle','USERNAME'))
