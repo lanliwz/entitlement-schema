@@ -26,9 +26,6 @@ def oracle_connection():
         return [{"error": str(e)}]
 
 def oracle_query(sql: str) -> List[Dict[str, Any]]:
-
-    if not all([jdbc_jar, url, user, password]):
-        return [{"error": "Set ORACLE_JDBC_JAR, ORACLE_URL, ORACLE_USER, ORACLE_PASSWORD env vars"}]
     try:
         conn = jaydebeapi.connect(
             "oracle.jdbc.OracleDriver",
