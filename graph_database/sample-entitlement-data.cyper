@@ -1,0 +1,82 @@
+
+// OpenAI Prompt
+// create sample nodes and their relationship based on this neo4j model,
+// all annotation properties are not part of sample node or relationship property
+
+// ===== Schemas =====
+MERGE (sSales:Schema {schemaId: "SCH001"})
+  SET sSales.schemaName = "sales";
+
+MERGE (sHR:Schema {schemaId: "SCH002"})
+  SET sHR.schemaName = "hr";
+
+// ===== Tables =====
+MERGE (tCustomer:Table {tableId: "TBL_CUSTOMER"})
+  SET tCustomer.tableName = "customer";
+
+MERGE (tEmployee:Table {tableId: "TBL_EMPLOYEE"})
+  SET tEmployee.tableName = "employee";
+
+// Table → Schema
+MERGE (tCustomer)-[:belongsToSchema]->(sSales);
+MERGE (tEmployee)-[:belongsToSchema]->(sHR);
+
+// ===== Columns =====
+MERGE (cEmail:Column {columnId: "COL_CUSTOMER_EMAIL"})
+  SET cEmail.columnName = "customer_email";
+
+MERGE (cBalance:Column {columnId: "COL_ACCOUNT_BALANCE"})
+  SET cBalance.columnName = "account_balance";
+
+MERGE (cDept:Column {columnId: "COL_DEPARTMENT"})
+  SET cDept.columnName = "department";
+
+MERGE (cSSN:Column {columnId: "COL_SSN"})
+  SET cSSN.columnName = "ssn";
+
+// Column → Table
+MERGE (cEmail)-[:belongsToTable]->(tCustomer);
+MERGE (cBalance)-[:belongsToTable]->(tCustomer);
+MERGE (cDept)-[:belongsToTable]->(tEmployee);
+MERGE (cSSN)-[:belongsToTable]->(tEmployee);
+
+// ===== Policies =====
+MERGE (pDeptRow:Policy {policyId: "POL_ROW_DEPT"})
+  SET pDeptRow.policyName = "DeptRowFilter",
+      pDeptRow.definition = "Only rows where employee.department in {'Finance','HR'}";
+
+MERGE (pMaskSSN:Policy {policyId: "POL_MASK_SSN"})
+  SET pMaskSSN.policyName = "MaskSSN",
+      pMaskSSN.definition = "Show only last 4 digits of SSN";
+
+MERGE (pMaskBalance:Policy {policyId: "POL_MASK_BAL"})
+  SET pMaskBalance.policyName = "MaskAccountBalance",
+      pMaskBalance.definition = "Mask account_balance unless explicitly granted";
+
+// Policy → Column (rules)
+MERGE (pDeptRow)-[:hasRowRule]->(cDept);
+MERGE (pMaskSSN)-[:hasColumnRule]->(cSSN);
+MERGE (pMaskBalance)-[:hasColumnRule]->(cBalance);
+
+// ===== Policy Groups =====
+MERGE (pgFinance:PolicyGroup {policyGroupId: "PG_FIN"})
+  SET pgFinance.policyGroupName = "Finance Analysts";
+
+MERGE (pgHR:PolicyGroup {policyGroupId: "PG_HR"})
+  SET pgHR.policyGroupName = "HR Analysts";
+
+// PolicyGroup → Policy
+MERGE (pgFinance)-[:includesPolicy]->(pMaskBalance);
+MERGE (pgFinance)-[:includesPolicy]->(pMaskSSN);
+MERGE (pgHR)-[:includesPolicy]->(pDeptRow);
+MERGE (pgHR)-[:includesPolicy]->(pMaskSSN);
+
+// ===== Users =====
+// The model doesn't specify data properties for :User.
+// To keep this sample idempotent, we still MERGE with stable synthetic keys.
+MERGE (alice:User {__key: "user-alice"})
+MERGE (bob:User   {__key: "user-bob"})
+
+// User → PolicyGroup
+MERGE (alice)-[:memberOf]->(pgFinance);
+MERGE (bob)-[:memberOf]->(pgHR);
