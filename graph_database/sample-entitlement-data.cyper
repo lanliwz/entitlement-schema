@@ -128,7 +128,7 @@ UNWIND users AS u
 MATCH (usr:User {userId: u.userId})
 UNWIND u.groups AS gid
 MATCH (pg:PolicyGroup {policyGroupId: gid})
-MERGE (usr)-[:memberOf]->(pg);
+MERGE (usr)-[:memberOf {startDate:datetime()}]->(pg);
 
 // (optional) quick sanity check
 // MATCH (a)-[r]->(b)
