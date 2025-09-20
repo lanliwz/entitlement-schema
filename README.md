@@ -34,47 +34,57 @@ The **entitlement ontology** is designed to represent **fine-grained access cont
 
 ---
 
-## Core Concepts
+## Neo4j Node labels:
 
-- (:Policy) is a node, annotation properties {'rdfs__label': 'policy', 'skos__definition': 'Encapsulates access logic combining row-level and column-level rules.', 'uri': 'http://upupedu.com/ontology/entitlement/tabular_data/policy', 'note': 'Each policy must have a policy_id and policy_name; may include definition.'}
-- (:PolicyGroup) is a node, annotation properties {'rdfs__label': 'policy group', 'skos__definition': 'A collection of policies aligned to a persona function or role set.', 'uri': 'http://upupedu.com/ontology/entitlement/tabular_data/policy_group', 'note': 'Each policy group must have a policy_group_id and policy_group_name; may include definition.'}
-- (:Column) is a node, annotation properties {'rdfs__label': 'column', 'skos__definition': 'Represents a physical database column.', 'uri': 'http://upupedu.com/ontology/entitlement/tabular_data/column'}
-- (:Table) is a node, annotation properties {'rdfs__label': 'table', 'skos__definition': 'Database table grouping columns within a schema.', 'uri': 'http://upupedu.com/ontology/entitlement/tabular_data/table', 'note': 'Contains columns such as customer_email.'}
-- (:Schema) is a node, annotation properties {'rdfs__label': 'schema', 'skos__definition': 'Database schema grouping tables within a database catalog.', 'uri': 'http://upupedu.com/ontology/entitlement/tabular_data/schema', 'note': 'Schema for tables.'}
-- (:User) is a node, annotation properties {'rdfs__label': 'user', 'skos__definition': 'Subject or principal entitled to policy groups.', 'uri': 'http://upupedu.com/ontology/entitlement/tabular_data/user', 'note': 'Example user Alice with membership to a policy group.'}
-
+- (:Policy) is defined as:
+Encapsulates access logic combining row-level and column-level rules. Each policy must have a policy_id and policy_name; may also include a definition.
+- (:PolicyGroup) is defined as:
+A collection of policies aligned to a persona, function, or role set. Each policy group must have a policy_group_id and policy_group_name; may also include a definition.
+- (:Column) is defined as:
+Represents a physical database column.
+- (:Table) is defined as:
+Database table grouping columns within a schema. Contains columns such as customer_email.
+- (:Schema) is defined as:
+Database schema grouping tables within a database catalog. Serves as a container for tables.
+- (:User) is defined as:
+Subject or principal entitled to policy groups. For example, a user like Alice can be a member of a policy group.
 ---
 
-## Relationship and their properties
+## Relationships
 - (:Policy)-[:hasColumnRule]->(:Column)
 - (:PolicyGroup)-[:includesPolicy]->(:Policy)
 - (:Column)-[:belongsToTable]->(:Table)
 - (:Table)-[:belongsToSchema]->(:Schema)
 - (:User)-[:memberOf]->(:PolicyGroup) 
-- [:hasRowRule] is a relationship, annotation properties  {'owl__maxQualifiedCardinality': 9999, 'rdfs__label': 'has row rule', 'owl__minQualifiedCardinality': 0, 'skos__definition': 'Policy includes row-level access condition that applies to a specific column.', 'uri': 'http://upupedu.com/ontology/entitlement/tabular_data/policy/hasRowRule/customer_email'}
-- [:hasColumnRule] is a relationship, annotation properties  {'owl__maxQualifiedCardinality': 9999, 'rdfs__label': 'has column rule', 'owl__minQualifiedCardinality': 0, 'skos__definition': 'Policy includes column-level masking logic that applies to a specific column.', 'uri': 'http://upupedu.com/ontology/entitlement/tabular_data/policy/hasColumnRule/account_balance'}
-- [:includesPolicy] is a relationship, annotation properties  {'owl__maxQualifiedCardinality': 9999, 'rdfs__label': 'includes policy', 'owl__minQualifiedCardinality': 0, 'skos__definition': 'Policy group bundles policies.', 'uri': 'http://upupedu.com/ontology/entitlement/tabular_data/policy_group/includesPolicy/policy'}
-- [:belongsToTable] is a relationship, annotation properties  {'owl__maxQualifiedCardinality': 1, 'rdfs__label': 'belongs to table', 'owl__minQualifiedCardinality': 1, 'skos__definition': 'A column is always contained in exactly one table.', 'uri': 'http://upupedu.com/ontology/entitlement/tabular_data/belongsToTable'}
-- [:belongsToSchema] is a relationship, annotation properties  {'owl__maxQualifiedCardinality': 1, 'rdfs__label': 'belongs to schema', 'owl__minQualifiedCardinality': 1, 'skos__definition': 'A table is always contained in exactly one schema.', 'uri': 'http://upupedu.com/ontology/entitlement/tabular_data/belongsToSchema'}
-- [:memberOf] is a relationship, annotation properties  {'owl__maxQualifiedCardinality': 9999, 'rdfs__label': 'member of', 'owl__minQualifiedCardinality': 0, 'skos__definition': 'User inherits policies through group membership.', 'uri': 'http://upupedu.com/ontology/entitlement/tabular_data/user/alice/memberOf/policy_group'} 
 
-Each relationship is annotated with a **`skos__definition`** to capture its semantics (e.g., “column mask rule applies to a specific column”).  
-
+## Relationship types:
+- [:hasRowRule] is defined as:
+Policy includes row-level access conditions that apply to a specific column.
+- [:hasColumnRule] is defined as:
+Policy includes column-level masking logic that applies to a specific column.
+- [:includesPolicy] is defined as:
+Policy group bundles policies.
+- [:belongsToTable] is defined as:
+A column is always contained in exactly one table.
+- [:belongsToSchema] is defined as:
+A table is always contained in exactly one schema.
+- [:memberOf] is defined as:
+User inherits policies through group membership.
 ---
 
 ## Data Properties
 
-- (:Table) has data property tableName with data type TableNameDatatype
-- (:Schema) has data property schemaId with data type SchemaIdDatatype
-- (:Schema) has data property schemaName with data type SchemaNameDatatype
-- (:Policy) has data property policyId with data type PolicyIdDatatype
-- (:Policy) has data property policyName with data type PolicyNameDatatype
-- (:Policy) has data property definition with data type PolicyDefinitionDatatype
-- (:PolicyGroup) has data property policyGroupId with data type PolicyGroupIdDatatype
-- (:PolicyGroup) has data property policyGroupName with data type PolicyGroupNameDatatype
-- (:Column) has data property columnId with data type ColumnIdDatatype
-- (:Column) has data property columnName with data type ColumnNameDatatype
-- (:Table) has data property tableId with data type TableIdDatatype 
+- (:Table) has property tableName with data type string
+- (:Schema) has property schemaId, which has unique value, with data type string
+- (:Schema) has property schemaName with data type string
+- (:Policy) has property policyId, which has unique value, with data type string
+- (:Policy) has property policyName with data type string
+- (:Policy) has property definition with data type string
+- (:PolicyGroup) has property policyGroupId, which has unique value, with data type string
+- (:PolicyGroup) has property policyGroupName with data type string
+- (:Column) has property columnId, which has unique value, with data type string
+- (:Column) has property columnName with data type string
+- (:Table) has property tableId, which has unique value, with data type string
 
 ## Benefits
 
@@ -85,3 +95,47 @@ Each relationship is annotated with a **`skos__definition`** to capture its sema
 - **Audit & compliance**: Graph relationships and lifecycle properties (`status`, timestamps) make it possible to query, certify, and audit entitlements end-to-end.  
 
 ---
+
+## Mermaid class diagram:
+```Mermaid
+classDiagram
+    %% === Entities (with properties) ===
+    class Policy {
+      +policyId: string
+      +policyName: string
+      +definition: string
+    }
+
+    class PolicyGroup {
+      +policyGroupId: string 
+      +policyGroupName: string
+      +definition: string
+    }
+
+    class Column {
+      +columnId: string 
+      +columnName: string
+    }
+
+    class Table {
+      +tableId: string 
+      +tableName: string
+    }
+
+    class Schema {
+      +schemaId: string 
+      +schemaName: string
+    }
+
+    class User {
+      %% (add userId/userName later if needed)
+    }
+
+    %% === Relationships with multiplicities and labels ===
+    Policy "0..*" --> "0..*" Column : hasRowRule
+    Policy "0..*" --> "0..*" Column : hasColumnRule
+    PolicyGroup "1" --> "0..*" Policy : includesPolicy
+    Column "1" --> "1" Table : belongsToTable
+    Table "1" --> "1" Schema : belongsToSchema
+    User "0..*" --> "0..*" PolicyGroup : memberOf
+```
