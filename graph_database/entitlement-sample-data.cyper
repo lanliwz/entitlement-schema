@@ -1,61 +1,136 @@
-// === Schema ===
-MERGE (s1:Schema {schemaId: "SCH001"})
-  ON CREATE SET s1.schemaName = "customer_data";
+// ===== Schemas =====
+WITH [
+  {schemaId:'SCH001', schemaName:'sales'},
+  {schemaId:'SCH002', schemaName:'hr'}
+] AS schemas
+UNWIND schemas AS s
+MERGE (sc:Schema {schemaId: s.schemaId})
+  SET sc.schemaName = s.schemaName
+WITH schemas
 
-MERGE (s2:Schema {schemaId: "SCH002"})
-  ON CREATE SET s2.schemaName = "hr_data";
+// ===== Tables =====
+WITH [
+  {tableId:'TBL_CUSTOMER', tableName:'customer'},
+  {tableId:'TBL_EMPLOYEE', tableName:'employee'}
+] AS tables
+UNWIND tables AS t
+MERGE (tb:Table {tableId: t.tableId})
+  SET tb.tableName = t.tableName
+WITH tables
 
-// === Tables ===
-MERGE (t1:Table {tableId: "TBL001"})
-  ON CREATE SET t1.tableName = "customers";
-MERGE (t1)-[:belongsToSchema]->(s1);
+// Table → Schema
+WITH [
+  {tableId:'TBL_CUSTOMER', schemaId:'SCH001'},
+  {tableId:'TBL_EMPLOYEE', schemaId:'SCH002'}
+] AS tableSchemas
+UNWIND tableSchemas AS ts
+MATCH (tb:Table {tableId: ts.tableId})
+MATCH (sc:Schema {schemaId: ts.schemaId})
+MERGE (tb)-[:belongsToSchema]->(sc)
+WITH tableSchemas
 
-MERGE (t2:Table {tableId: "TBL002"})
-  ON CREATE SET t2.tableName = "employees";
-MERGE (t2)-[:belongsToSchema]->(s2);
+// ===== Columns =====
+WITH [
+  {columnId:'COL_CUSTOMER_EMAIL', columnName:'customer_email', tableId:'TBL_CUSTOMER'},
+  {columnId:'COL_ACCOUNT_BALANCE', columnName:'account_balance', tableId:'TBL_CUSTOMER'},
+  {columnId:'COL_DEPARTMENT',      columnName:'department',     tableId:'TBL_EMPLOYEE'},
+  {columnId:'COL_SSN',             columnName:'ssn',            tableId:'TBL_EMPLOYEE'}
+] AS cols
+UNWIND cols AS c
+MERGE (col:Column {columnId: c.columnId})
+  SET col.columnName = c.columnName
+WITH cols
+UNWIND cols AS c
+MATCH (col:Column {columnId: c.columnId})
+MATCH (tb:Table  {tableId:  c.tableId})
+MERGE (col)-[:belongsToTable]->(tb)
+WITH DISTINCT 1 AS _ // keep pipeline alive
 
-// === Columns ===
-MERGE (c1:Column {columnId: "COL001"})
-  ON CREATE SET c1.columnName = "customer_email";
-MERGE (c1)-[:belongsToTable]->(t1);
+// ===== Policies =====
+WITH [
+  {policyId:'POL_ROW_DEPT', policyName:'DeptRowFilter',      definition:"Only rows where employee.department in ['Finance','HR']}"},
+  {policyId:'POL_MASK_SSN', policyName:'MaskSSN',            definition:'Show only last 4 digits of SSN'},
+  {policyId:'POL_MASK_BAL', policyName:'MaskAccountBalance', definition:'Mask account_balance unless explicitly granted'}
+] AS policies
+UNWIND policies AS p
+MERGE (pol:Policy {policyId: p.policyId})
+  SET pol.policyName = p.policyName,
+      pol.definition = p.definition
+WITH policies
 
-MERGE (c2:Column {columnId: "COL002"})
-  ON CREATE SET c2.columnName = "customer_ssn";
-MERGE (c2)-[:belongsToTable]->(t1);
+// Policy → Column (rules)
+WITH [
+  {policyId:'POL_ROW_DEPT', columnId:'COL_DEPARTMENT',      rel:'hasRowRule'},
+  {policyId:'POL_MASK_SSN', columnId:'COL_SSN',             rel:'hasColumnRule'},
+  {policyId:'POL_MASK_BAL', columnId:'COL_ACCOUNT_BALANCE', rel:'hasColumnRule'}
+] AS rules
+UNWIND rules AS r
+MATCH (p:Policy  {policyId:  r.policyId})
+MATCH (c:Column  {columnId:  r.columnId})
+CALL {
+  WITH p, c, r
+  WITH p, c, r.rel AS rel
+  RETURN rel
+}
+WITH p, c, r
+CALL {
+  WITH p, c, r
+  // dynamic merge by rel type without APOC: use CASE fanout
+  WITH p, c, r
+  WITH p, c,
+       CASE r.rel
+         WHEN 'hasRowRule'    THEN 'hasRowRule'
+         WHEN 'hasColumnRule' THEN 'hasColumnRule'
+       END AS relType
+  WITH p, c, relType
+  FOREACH (_ IN CASE WHEN relType = 'hasRowRule' THEN [1] ELSE [] END |
+    MERGE (p)-[:hasRowRule]->(c)
+  )
+  FOREACH (_ IN CASE WHEN relType = 'hasColumnRule' THEN [1] ELSE [] END |
+    MERGE (p)-[:hasColumnRule]->(c)
+  )
+  RETURN 1 AS _
+}
+WITH DISTINCT 1 AS _
 
-MERGE (c3:Column {columnId: "COL003"})
-  ON CREATE SET c3.columnName = "department";
-MERGE (c3)-[:belongsToTable]->(t2);
+// ===== Policy Groups =====
+WITH [
+  {policyGroupId:'PG_FIN', policyGroupName:'Finance Analysts'},
+  {policyGroupId:'PG_HR',  policyGroupName:'HR Analysts'}
+] AS groups
+UNWIND groups AS g
+MERGE (pg:PolicyGroup {policyGroupId: g.policyGroupId})
+  SET pg.policyGroupName = g.policyGroupName
+WITH groups
 
-MERGE (c4:Column {columnId: "COL004"})
-  ON CREATE SET c4.columnName = "ssn";
-MERGE (c4)-[:belongsToTable]->(t2);
+// PolicyGroup → Policy
+WITH [
+  {policyGroupId:'PG_FIN', policyId:'POL_MASK_BAL'},
+  {policyGroupId:'PG_FIN', policyId:'POL_MASK_SSN'},
+  {policyGroupId:'PG_HR',  policyId:'POL_ROW_DEPT'},
+  {policyGroupId:'PG_HR',  policyId:'POL_MASK_SSN'}
+] AS gp
+UNWIND gp AS x
+MATCH (pg:PolicyGroup {policyGroupId: x.policyGroupId})
+MATCH (p:Policy      {policyId:      x.policyId})
+MERGE (pg)-[:includesPolicy]->(p)
+WITH DISTINCT 1 AS _
 
-// === Policies ===
-MERGE (p1:Policy {policyId: "POL001"})
-  ON CREATE SET p1.policyName = "Mask SSN", p1.definition = "Mask last 4 digits of SSN";
-MERGE (p1)-[:hasColumnRule]->(c2);
-MERGE (p1)-[:hasColumnRule]->(c4);
+// ===== Users =====
+WITH [
+  {userId:'user-alice', groups:['PG_FIN']},
+  {userId:'user-bob',   groups:['PG_HR']}
+] AS users
+UNWIND users AS u
+MERGE (usr:User {userId: u.userId})
+WITH users
+UNWIND users AS u
+MATCH (usr:User {userId: u.userId})
+UNWIND u.groups AS gid
+MATCH (pg:PolicyGroup {policyGroupId: gid})
+MERGE (usr)-[:memberOf {startDate:datetime()}]->(pg);
 
-MERGE (p2:Policy {policyId: "POL002"})
-  ON CREATE SET p2.policyName = "Row filter by Department", p2.definition = "Restrict rows to Finance department only";
-MERGE (p2)-[:hasRowRule]->(c3);
-
-// === Policy Groups ===
-MERGE (pg1:PolicyGroup {policyGroupId: "PG001"})
-  ON CREATE SET pg1.policyGroupName = "Finance Analysts";
-MERGE (pg1)-[:includesPolicy]->(p1);
-MERGE (pg1)-[:includesPolicy]->(p2);
-
-MERGE (pg2:PolicyGroup {policyGroupId: "PG002"})
-  ON CREATE SET pg2.policyGroupName = "HR Managers";
-MERGE (pg2)-[:includesPolicy]->(p1);
-
-// === Users ===
-MERGE (u1:User {userId: "USR001"})
-  ON CREATE SET u1.userName = "Alice";
-MERGE (u1)-[:memberOf]->(pg1);
-
-MERGE (u2:User {userId: "USR002"})
-  ON CREATE SET u2.userName = "Bob";
-MERGE (u2)-[:memberOf]->(pg2);
+// (optional) quick sanity check
+// MATCH (a)-[r]->(b)
+// RETURN labels(a) AS from, type(r) AS rel, labels(b) AS to, count(*) AS n
+// ORDER BY n DESC;
