@@ -25,7 +25,7 @@ def mysql_connection():
             DRIVER,
             JDBC_URL,
             [USERNAME, PASSWORD],
-            JDBC_JAR,
+            JDBC_JAR
         )
         return conn
     except Exception as e:
@@ -42,9 +42,10 @@ def mysql_query(sql: str, conn) -> List[Dict[str, Any]]:
     try:
         curs = conn.cursor()
         curs.execute(sql)
-        cols = [d[0] for d in curs.description] if curs.description else []
-        rows = [dict(zip(cols, r)) for r in curs.fetchall()] if cols else []
+        rows = curs.fetchall()
         curs.close()
         return rows
     except Exception as e:
         return [{"error": str(e)}]
+
+
