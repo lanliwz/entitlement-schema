@@ -85,6 +85,7 @@ User inherits policies through group membership.
 - (:Column) has property columnId, which has unique value, with data type string
 - (:Column) has property columnName with data type string
 - (:Table) has property tableId, which has unique value, with data type string
+- (:User) has property userId, which has unique value, with data type string
 
 ## Benefits
 
