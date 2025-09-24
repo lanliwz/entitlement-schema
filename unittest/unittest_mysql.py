@@ -343,8 +343,8 @@ def run_query(user_id: str, sql: str) -> AppState:
 
 # ---- Example ---------------------------------------------------------
 if __name__ == "__main__":
-    # user = "user-alice"
-    user = "user-bob"
+    user = "user-alice"
+    # user = "user-bob"
     q = """
     SELECT e.emp_id, e.first_name, e.last_name, e.salary
     FROM bank.employee e
