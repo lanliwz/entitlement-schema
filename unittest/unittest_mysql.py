@@ -314,8 +314,7 @@ def rewrite_node(state: AppState) -> AppState:
 
 def execute_node(state: AppState) -> AppState:
     _append_msg(state, "Executing rewritten SQL in MySQL.")
-    print("executing - " + state["rewritten_sql"])
-    rewritten_sql = get_sql(state["rewritten_sql"]) or state["rewritten_sql"]
+    rewritten_sql = get_sql(state["rewritten_sql"])
     rows = run_mysql_query(rewritten_sql)
     state["rows"] = rows
     _append_msg(state, f"Returned {len(rows)} rows.")
@@ -344,6 +343,7 @@ def run_query(user_id: str, sql: str) -> AppState:
 
 # ---- Example ---------------------------------------------------------
 if __name__ == "__main__":
+    # user = "user-alice"
     user = "user-bob"
     q = """
     SELECT e.emp_id, e.first_name, e.last_name, e.salary
