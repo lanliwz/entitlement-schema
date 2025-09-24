@@ -24,7 +24,7 @@ from neo4j import GraphDatabase
 
 class EntitlementRepository:
     def __init__(self, uri: str, user: str, password: str):
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+        self.driver = GraphDatabase.driver(uri, auth=(user, password),database="entitlement")
     def close(self):
         self.driver.close()
 
@@ -283,8 +283,8 @@ if __name__ == "__main__":
     #
     # If your entitlements include a MASK on salary for this user,
     # the rewriter (LLM or fallback) should alter the SELECT appropriately.
-    user = os.getenv("TEST_USER_ID", "user-alice")
-    q = os.getenv("TEST_SQL", "SELECT emp_id, first_name, last_name, salary FROM bank.employee")
+    user = "user-alice"
+    q = "SELECT emp_id, first_name, last_name, salary FROM bank.employee"
 
     result = run_query(user, q)
     print("---- TRACE ----")
