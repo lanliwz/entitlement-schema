@@ -7,6 +7,28 @@ from typing import Any, Dict, List, Literal, TypedDict
 import sqlglot
 from sqlglot import parse_one
 from langgraph.graph import StateGraph, START, END
+import re
+
+def get_sql(text: str) -> str:
+    """
+    If input text is a raw SQL statement, return it directly.
+    If wrapped in ```sql ... ```, extract the SQL inside.
+    Otherwise, return an empty string.
+    """
+    sql_keywords = ("SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "ALTER")
+    stripped = text.strip()
+
+    # Case 1: Already SQL (starts with known SQL keyword)
+    if any(stripped.upper().startswith(k) for k in sql_keywords):
+        return stripped
+
+    # Case 2: Wrapped in ```sql ... ```
+    pattern = r"```sql(.*?)```"
+    match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+
+    return ""
 
 mysql_conn = mysql_connection()
 # print(mysql_query("select * from bank.employee",mysql_conn))
@@ -249,7 +271,9 @@ def rewrite_node(state: AppState) -> AppState:
 
 def execute_node(state: AppState) -> AppState:
     _append_msg(state, "Executing rewritten SQL in MySQL.")
-    rows = run_mysql_query(state["rewritten_sql"])
+    print("executing - "+ state["rewritten_sql"])
+    rewritten_sql = get_sql(state["rewritten_sql"])
+    rows = run_mysql_query(rewritten_sql)
     state["rows"] = rows
     _append_msg(state, f"Returned {len(rows)} rows.")
     return state
@@ -283,9 +307,20 @@ if __name__ == "__main__":
     #
     # If your entitlements include a MASK on salary for this user,
     # the rewriter (LLM or fallback) should alter the SELECT appropriately.
-    user = "user-alice"
-    q = "SELECT emp_id, first_name, last_name, salary FROM bank.employee"
-
+    user = "user-bob"
+    q1 = """
+    SELECT emp_id, first_name, last_name, salary 
+    FROM bank.employee
+    """
+    q2 = """
+    SELECT e.emp_id, e.first_name, e.last_name, e.salary 
+    FROM bank.employee e JOIN bank.department d
+    ON e.dept_id = d.dept_id
+    """
+    q = """
+    SELECT *
+    FROM bank.department
+    """
     result = run_query(user, q)
     print("---- TRACE ----")
     for m in result.get("messages", []):
