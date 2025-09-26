@@ -3,21 +3,22 @@ import os
 from neo4j import GraphDatabase
 from typing import List, Dict, Any
 
-neo4j_bolt_url = os.getenv("Neo4jFinDBUrl")
-username = os.getenv("Neo4jFinDBUserName")
-password = os.getenv("Neo4jFinDBPassword")
 
-# 1. Create driver connection to Neo4j server
-# Adjust host/port and credentials
-driver = GraphDatabase.driver(
-    neo4j_bolt_url,
-    auth=(username, password),
-    database='entitlement'
-)
 
 class EntitlementRepository:
-    def __init__(self, driver):
-        self.driver = driver
+    neo4j_bolt_url = os.getenv("Neo4jFinDBUrl")
+    username = os.getenv("Neo4jFinDBUserName")
+    password = os.getenv("Neo4jFinDBPassword")
+
+    # 1. Create driver connection to Neo4j server
+    # Adjust host/port and credentials
+    driver = GraphDatabase.driver(
+        neo4j_bolt_url,
+        auth=(username, password),
+        database='entitlement'
+    )
+
+
 
     def close(self):
         self.driver.close()

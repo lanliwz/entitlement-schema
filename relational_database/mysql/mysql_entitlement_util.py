@@ -4,6 +4,9 @@ from sqlglot import parse_one
 from sqlglot import exp as E
 from typing import Any, Dict, List, Tuple, TypedDict
 import re
+from relational_database.mysql.mysql_connection import mysql_connection
+
+mysql_conn = mysql_connection()
 
 def get_sql(text: str) -> str:
     """

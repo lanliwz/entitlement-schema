@@ -1,6 +1,6 @@
 from graph_database.entitlement_util import *
 
-repo = EntitlementRepository(driver)
+repo = EntitlementRepository()
 print("\nuser-alice \n")
 entitlements = repo.fetch_entitlements(
     user_id="user-alice",

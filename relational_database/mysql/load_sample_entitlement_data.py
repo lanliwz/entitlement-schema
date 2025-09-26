@@ -1,6 +1,6 @@
 from graph_database.entitlement_util import *
 
-repo = EntitlementRepository(driver)
+repo = EntitlementRepository()
 
 mask_policy_1 = repo.add_mask_policy(
     schema_id="bank",

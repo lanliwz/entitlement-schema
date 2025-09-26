@@ -9,23 +9,9 @@ import sqlglot
 from sqlglot import parse_one
 from sqlglot import exp as E
 from langgraph.graph import StateGraph, START, END
+from relational_database.mysql.mysql_entitlement_util import get_sql, mysql_conn
 
-def get_sql(text: str) -> str:
-    """
-    If input text is a raw SQL statement, return it dir
 
-    ectly.
-    If wrapped in ```sql ... ```, extract the SQL inside.
-    Otherwise, return an empty string.
-    """
-    sql_keywords = ("SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "ALTER")
-    stripped = text.strip()
-    if any(stripped.upper().startswith(k) for k in sql_keywords):
-        return stripped
-    match = re.search(r"```sql(.*?)```", text, re.DOTALL | re.IGNORECASE)
-    return match.group(1).strip() if match else ""
-
-mysql_conn = mysql_connection()
 
 # Optional LLM rewriter (falls back to rule-based if no key)
 try:
@@ -34,47 +20,7 @@ try:
 except Exception:
     HAVE_LLM = False
 
-# ---- Neo4j Entitlement repo (minimal subset needed) -----------------
-from neo4j import GraphDatabase
-
-class EntitlementRepository:
-    def __init__(self, uri: str, user: str, password: str):
-        # Note: database name set to "entitlement" as in your code
-        self.driver = GraphDatabase.driver(uri, auth=(user, password), database="entitlement")
-    def close(self):
-        self.driver.close()
-
-    def fetch_entitlements(self, user_id: str, schema_name: str, table_name: str) -> List[Dict[str, Any]]:
-        cypher = """
-        MATCH (u:User {userId: $userId})-[:memberOf]->(pg:PolicyGroup)-[:includesPolicy]->(p:Policy)
-        MATCH (t:Table {tableName: $tableName})-[:belongsToSchema]->(s:Schema {schemaName: $schemaName})
-        MATCH (c:Column)-[:belongsToTable]->(t)
-        MATCH (p)-[r:hasRowRule|hasColumnRule]->(c)
-        RETURN DISTINCT
-          u.userId AS userId,
-          s.schemaName AS schemaName,
-          t.tableName AS tableName,
-          c.columnId AS columnId,
-          c.columnName AS columnName,
-          p.policyId AS policyId,
-          p.policyName AS policyName,
-          p.definition AS policyDefinition,
-          pg.policyGroupId AS policyGroupId,
-          pg.policyGroupName AS policyGroupName,
-          CASE type(r)
-            WHEN 'hasRowRule' THEN 'ROW'
-            WHEN 'hasColumnRule' THEN 'MASK'
-          END AS ruleType
-        ORDER BY c.columnName, ruleType, p.policyName;
-        """
-        with self.driver.session() as session:
-            rs = session.run(
-                cypher,
-                userId=user_id,
-                schemaName=schema_name,
-                tableName=table_name
-            )
-            return [dict(r) for r in rs]
+from graph_database.entitlement_util import EntitlementRepository
 
 # ---- MySQL executor --------------------------------------------------
 def run_mysql_query(sql: str) -> List[Dict[str, Any]]:
@@ -134,7 +80,7 @@ def fetch_all_entitlements_for_tables(user_id: str, parsed_tables: List[Dict[str
     username = os.getenv("Neo4jFinDBUserName")
     password = os.getenv("Neo4jFinDBPassword")
 
-    repo = EntitlementRepository(neo4j_bolt_url, username, password)
+    repo = EntitlementRepository()
     out: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
     try:
         for t in parsed_tables:
