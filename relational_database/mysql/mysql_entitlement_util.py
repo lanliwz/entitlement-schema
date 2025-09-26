@@ -149,3 +149,120 @@ class AppState(TypedDict, total=False):
     rewritten_sql: str
     rows: List[Dict[str, Any]]
     messages: List[str]
+# ---- MySQL executor --------------------------------------------------
+def run_mysql_query(sql: str) -> List[Dict[str, Any]]:
+    cur = mysql_conn.cursor()
+    try:
+        cur.execute(sql)
+        rows = cur.fetchall()
+        return rows
+    finally:
+        cur.close()
+def fetch_all_entitlements_for_tables(user_id: str, parsed_tables: List[Dict[str, str]]) -> Dict[Tuple[str, str], List[Dict[str, Any]]]:
+    """
+    Returns a dict keyed by (schema, table) -> [entitlements...]
+    If schema is None, default to 'bank'.
+    """
+    neo4j_bolt_url = os.getenv("Neo4jFinDBUrl")
+    username = os.getenv("Neo4jFinDBUserName")
+    password = os.getenv("Neo4jFinDBPassword")
+
+    repo = EntitlementRepository()
+    out: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
+    try:
+        for t in parsed_tables:
+            schema = t["schema"] or "bank"
+            table = t["table"]
+            key = (schema, table)
+            if key not in out:
+                out[key] = repo.fetch_entitlements(user_id, schema, table)
+    finally:
+        repo.close()
+    return out
+def parse_tables(sql: str) -> List[Dict[str, str]]:
+    """
+    Extract (schema, table, alias) for all table refs in the query.
+    """
+    try:
+        expr = parse_one(sql, read="mysql")
+    except Exception:
+        expr = parse_one(sql)
+    out: List[Dict[str, str]] = []
+    for t in expr.find_all(sqlglot.exp.Table):
+        table = str(t.this) if t.this else None
+        schema = str(t.db) if t.db else None
+        alias_exp: E.Alias = t.args.get("alias")
+        alias = str(alias_exp.this) if (alias_exp and alias_exp.this) else None
+        if table:
+            out.append({"schema": schema, "table": table, "alias": alias})
+    # dedupe by (schema, table, alias)
+    seen = set()
+    deduped = []
+    for x in out:
+        key = (x["schema"], x["table"], x["alias"])
+        if key not in seen:
+            deduped.append(x); seen.add(key)
+    return deduped
+# ---- Helpers ---------------------------------------------------------
+def _append_msg(state: AppState, msg: str) -> None:
+    state.setdefault("messages", []).append(msg)
+
+
+
+# ---- AST helpers for alias mapping and rewriting --------------------
+def _build_alias_map(expr: E.Expression) -> Dict[Tuple[str|None, str], str|None]:
+    """
+    Map (schema, table) -> alias (or None if no alias).
+    """
+    amap: Dict[Tuple[str|None, str], str|None] = {}
+    for t in expr.find_all(E.Table):
+        schema = str(t.db) if t.db else None
+        table = str(t.this) if t.this else None
+        alias_exp: E.Alias = t.args.get("alias")
+        alias = str(alias_exp.this) if (alias_exp and alias_exp.this) else None
+        if table:
+            amap[(schema, table)] = alias
+    return amap
+
+def _and_where(expr: E.Expression, pred: E.Expression) -> None:
+    """
+    AND-conjoin a predicate into the query's WHERE clause.
+    If WHERE absent, create one; try to insert before GROUP/ORDER/LIMIT automatically via sqlglot.
+    """
+    where = expr.args.get("where")
+    if where and where.this:
+        where.this = E.And(this=where.this, expression=pred)
+    else:
+        expr.set("where", E.Where(this=pred))
+# ---- Nodes -----------------------------------------------------------
+def parse_node(state: AppState) -> AppState:
+    _append_msg(state, "Parsing SQL for table references (multi-table, alias-aware).")
+    parsed = parse_tables(state["input_sql"])
+    state["parsed_tables"] = parsed
+    _append_msg(state, f"Tables found: {parsed}")
+    return state
+
+def entitlements_node(state: AppState) -> AppState:
+    _append_msg(state, "Fetching entitlements for all tables.")
+    ent_by_tbl = fetch_all_entitlements_for_tables(state["user_id"], state["parsed_tables"])
+    state["entitlements_by_table"] = ent_by_tbl
+    _append_msg(state, f"Fetched entitlements for {len(ent_by_tbl)} table(s).")
+    return state
+
+def rewrite_node(state: AppState) -> AppState:
+    _append_msg(state, "Rewriting SQL using entitlements across all tables.")
+    rewritten = llm_rewrite_all(
+        state["input_sql"],
+        state.get("parsed_tables", []),
+        state.get("entitlements_by_table", {})
+    )
+    state["rewritten_sql"] = rewritten
+    return state
+
+def execute_node(state: AppState) -> AppState:
+    _append_msg(state, "Executing rewritten SQL in MySQL.")
+    rewritten_sql = get_sql(state["rewritten_sql"])
+    rows = run_mysql_query(rewritten_sql)
+    state["rows"] = rows
+    _append_msg(state, f"Returned {len(rows)} rows.")
+    return state
