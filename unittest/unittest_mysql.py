@@ -12,7 +12,9 @@ from langgraph.graph import StateGraph, START, END
 
 def get_sql(text: str) -> str:
     """
-    If input text is a raw SQL statement, return it directly.
+    If input text is a raw SQL statement, return it dir
+
+    ectly.
     If wrapped in ```sql ... ```, extract the SQL inside.
     Otherwise, return an empty string.
     """
