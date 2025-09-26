@@ -1,24 +1,9 @@
 from __future__ import annotations
-from relational_database.mysql.mysql_connection import *
-from graph_database.entitlement_util import *  # (kept if you reference helpers elsewhere)
-import os
-from typing import Any, Dict, List, Tuple, TypedDict
-
-import re
-import sqlglot
-from sqlglot import parse_one
-from sqlglot import exp as E
 from langgraph.graph import StateGraph, START, END
-from relational_database.mysql.mysql_entitlement_util import get_sql, mysql_conn
+from relational_database.mysql.mysql_entitlement_util import *
 
 
 
-# Optional LLM rewriter (falls back to rule-based if no key)
-try:
-    from langchain_openai import ChatOpenAI
-    HAVE_LLM = bool(os.getenv("OPENAI_API_KEY"))
-except Exception:
-    HAVE_LLM = False
 
 from graph_database.entitlement_util import EntitlementRepository
 
@@ -32,15 +17,6 @@ def run_mysql_query(sql: str) -> List[Dict[str, Any]]:
     finally:
         cur.close()
 
-# ---- App State -------------------------------------------------------
-class AppState(TypedDict, total=False):
-    user_id: str
-    input_sql: str
-    parsed_tables: List[Dict[str, str]]                 # [{schema, table, alias}]
-    entitlements_by_table: Dict[Tuple[str,str], List[Dict[str, Any]]]
-    rewritten_sql: str
-    rows: List[Dict[str, Any]]
-    messages: List[str]                                  # trace/debug
 
 # ---- Helpers ---------------------------------------------------------
 def _append_msg(state: AppState, msg: str) -> None:
@@ -93,33 +69,6 @@ def fetch_all_entitlements_for_tables(user_id: str, parsed_tables: List[Dict[str
         repo.close()
     return out
 
-# ---------- Rewriter (LLM or alias-aware rule-based) ----------
-REWRITER_SYSTEM_PROMPT = """You are a precise SQL rewriter that applies entitlement rules for ALL tables in the query.
-Input contains: original SQL, parsed tables (with aliases), and entitlements_by_table keyed by (schema, table).
-Rules:
-- For each table's entitlements:
-  * Add row filters by AND-conjoining them into WHERE/ON clauses using the correct table alias.
-  * Apply column masks by replacing selected column expressions with masked expressions (e.g. 0.00 AS salary) when masking applies.
-- Preserve joins, aliases, projections, order, limits.
-Return only the final SQL, no commentary.
-"""
-
-def llm_rewrite_all(original_sql: str,
-                    parsed_tables: List[Dict[str, str]],
-                    entitlements_by_table: Dict[Tuple[str, str], List[Dict[str, Any]]]) -> str:
-    if not HAVE_LLM:
-        return rule_based_rewrite_all(original_sql, parsed_tables, entitlements_by_table)
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-    payload = {
-        "original_sql": original_sql,
-        "tables": parsed_tables,
-        "entitlements_by_table": entitlements_by_table,
-    }
-    msg = llm.invoke([
-        {"role": "system", "content": REWRITER_SYSTEM_PROMPT},
-        {"role": "user", "content": str(payload)}
-    ])
-    return msg.content.strip()
 
 # ---- AST helpers for alias mapping and rewriting --------------------
 def _build_alias_map(expr: E.Expression) -> Dict[Tuple[str|None, str], str|None]:
