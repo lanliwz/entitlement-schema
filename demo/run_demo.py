@@ -1,5 +1,8 @@
 from langgraph.graph import StateGraph, START, END
 from relational_database.mysql.mysql_entitlement_util import *
+from dotenv import load_dotenv
+import os
+load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
 
 # ---- Graph wiring ----------------------------------------------------
 def build_app():

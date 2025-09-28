@@ -1,3 +1,5 @@
+//------------clean up ------------------
+MATCH (n) DETACH DELETE n;
 // ---------- Constraints (standalone) ----------
 CREATE CONSTRAINT unique_userId IF NOT EXISTS
 FOR (u:User) REQUIRE u.userId IS UNIQUE;

@@ -163,9 +163,6 @@ def fetch_all_entitlements_for_tables(user_id: str, parsed_tables: List[Dict[str
     Returns a dict keyed by (schema, table) -> [entitlements...]
     If schema is None, default to 'bank'.
     """
-    neo4j_bolt_url = os.getenv("Neo4jFinDBUrl")
-    username = os.getenv("Neo4jFinDBUserName")
-    password = os.getenv("Neo4jFinDBPassword")
 
     repo = EntitlementRepository()
     out: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
