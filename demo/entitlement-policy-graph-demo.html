@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Entitlement Policy Graph – GoJS Demo</title>
+  <script src="https://unpkg.com/gojs/release/go.js"></script>
+  <style>
+    html, body { height: 100%; margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+    .wrap { display: grid; grid-template-columns: 320px 1fr; height: 100%; }
+    aside { padding: 16px; border-right: 1px solid #e5e7eb; background: #fafafa; }
+    main { display: grid; grid-template-rows: 56px 1fr; }
+    header { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; background: #ffffff; }
+    #diagramDiv { width: 100%; height: calc(100vh - 56px); }
+    .legend { font-size: 14px; line-height: 1.35; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; margin: 2px 0; }
+    .u { background: #e0f2fe; }
+    .g { background: #e5e7eb; }
+    .p { background: #fef9c3; }
+    .c { background: #dcfce7; }
+    .t { background: #fee2e2; }
+    .s { background: #ede9fe; }
+    code { background: #f6f8fa; padding: 2px 6px; border-radius: 6px; }
+    .note { font-size: 12px; color: #6b7280; }
+    .btn { padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 10px; background: white; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <aside>
+      <h2>Legend</h2>
+      <div class="legend">
+        <div><span class="pill u">User</span> <span class="pill g">PolicyGroup</span> <span class="pill p">Policy</span></div>
+        <div><span class="pill c">Column</span> <span class="pill t">Table</span> <span class="pill s">Schema</span></div>
+        <p style="margin-top:8px;">
+          Relationships:
+          <br/><code>memberOf</code>, <code>includesPolicy</code>, <code>hasColumnRule</code>, <code>hasRowRule</code>, <code>belongsToTable</code>, <code>belongsToSchema</code>
+        </p>
+        <p class="note">Sample data mirrors your seed: All Employees masks salary; Finance/HR/IT add row rules; Client Support sees real salaries.</p>
+        <button class="btn" onclick="layout('LayeredDigraph')">Layered</button>
+        <button class="btn" onclick="layout('ForceDirected')">Force</button>
+        <button class="btn" onclick="layout('Circular')">Circular</button>
+      </div>
+    </aside>
+    <main>
+      <header>
+        <strong>Entitlement Policy Graph – Demo</strong>
+      </header>
+      <div id="diagramDiv"></div>
+    </main>
+  </div>
+
+  <script>
+  const $ = go.GraphObject.make;
+  const diagram = $(go.Diagram, "diagramDiv", {
+    initialAutoScale: go.Diagram.Uniform,
+    layout: $(go.LayeredDigraphLayout, { direction: 0, layerSpacing: 60 })
+  });
+
+  // Colors by type
+  const fillByType = {
+    User: "#bae6fd",
+    PolicyGroup: "#e5e7eb",
+    Policy: "#fef9c3",
+    Column: "#bbf7d0",
+    Table: "#fecaca",
+    Schema: "#ddd6fe"
+  };
+
+  diagram.nodeTemplate = $(go.Node, "Auto",
+    { locationSpot: go.Spot.Center },
+    $(go.Shape, "RoundedRectangle",
+      { stroke: "#111827", strokeWidth: 1.2, portId: "", fromLinkable: true, toLinkable: true, cursor: "pointer" },
+      new go.Binding("fill", "type", t => fillByType[t] || "#fff")),
+    $(go.Panel, "Table", { margin: 8 },
+      $(go.TextBlock,
+        { row: 0, font: "bold 13px Inter, ui-sans-serif", stroke: "#111827" },
+        new go.Binding("text", "label")),
+      $(go.TextBlock,
+        { row: 1, margin: new go.Margin(6, 0, 0, 0), font: "12px Inter, ui-sans-serif", stroke: "#374151" },
+        new go.Binding("text", "subtitle"))
+    )
+  );
+
+  diagram.linkTemplate = $(go.Link,
+    { routing: go.Link.AvoidsNodes, corner: 6, toShortLength: 2 },
+    $(go.Shape, { stroke: "#9ca3af", strokeWidth: 1.2 }),
+    $(go.Shape, { toArrow: "Standard", stroke: "#9ca3af", fill: "#9ca3af" }),
+    $(go.Panel, "Auto",
+      $(go.Shape, "RoundedRectangle", { fill: "#fff", stroke: "#e5e7eb" }),
+      $(go.TextBlock, { margin: 3, font: "11px Inter, ui-sans-serif", stroke: "#111827" }, new go.Binding("text", "label"))
+    )
+  );
+
+  const N = (key, type, label, subtitle) => ({ key, type, label, subtitle });
+  const L = (from, to, label) => ({ from, to, label });
+
+  const model = new go.GraphLinksModel();
+  model.nodeDataArray = [
+    // Users
+    N("u_alice", "User", "user-alice", "Finance + All Employees"),
+    N("u_bob",   "User", "user-bob",   "Client Support + All Employees"),
+    N("u_carol", "User", "user-carol", "IT + All Employees"),
+
+    // Policy Groups
+    N("pg_all", "PolicyGroup", "All Employees", "bundle: mask_salary_v1"),
+    N("pg_fin", "PolicyGroup", "Finance Group", "row_filter_finance_only"),
+    N("pg_hr",  "PolicyGroup", "HR Group", "row_filter_hr_only"),
+    N("pg_it",  "PolicyGroup", "IT Group", "row_filter_it_only"),
+    N("pg_cs",  "PolicyGroup", "Client Support Team", "no mask policy"),
+
+    // Policies
+    N("p_mask", "Policy", "mask_salary_v1", "Mask Salary"),
+    N("p_fin",  "Policy", "row_filter_finance_only", "dept_name = 'Finance'"),
+    N("p_hr",   "Policy", "row_filter_hr_only", "dept_name = 'HR'"),
+    N("p_it",   "Policy", "row_filter_it_only", "dept_name = 'IT'"),
+
+    // Schema/Table/Columns
+    N("s_bank", "Schema", "bank", "Schema"),
+    N("t_emp",  "Table",  "employee", "Table"),
+    N("t_dep",  "Table",  "department", "Table"),
+    N("c_sal",  "Column", "salary", "Column of employee"),
+    N("c_dnm",  "Column", "dept_name", "Column of department"),
+  ];
+
+  model.linkDataArray = [
+    // Memberships
+    L("u_alice", "pg_all", "memberOf"),
+    L("u_alice", "pg_fin", "memberOf"),
+    L("u_bob",   "pg_all", "memberOf"),
+    L("u_bob",   "pg_cs",  "memberOf"),
+    L("u_carol", "pg_all", "memberOf"),
+    L("u_carol", "pg_it",  "memberOf"),
+
+    // Group includes policies
+    L("pg_all", "p_mask", "includesPolicy"),
+    L("pg_fin", "p_fin",  "includesPolicy"),
+    L("pg_hr",  "p_hr",   "includesPolicy"),
+    L("pg_it",  "p_it",   "includesPolicy"),
+
+    // Policy rules
+    L("p_mask", "c_sal", "hasColumnRule"),
+    L("p_fin",  "c_dnm", "hasRowRule"),
+    L("p_hr",   "c_dnm", "hasRowRule"),
+    L("p_it",   "c_dnm", "hasRowRule"),
+
+    // Physical lineage
+    L("t_emp",  "s_bank", "belongsToSchema"),
+    L("t_dep",  "s_bank", "belongsToSchema"),
+    L("c_sal",  "t_emp",  "belongsToTable"),
+    L("c_dnm",  "t_dep",  "belongsToTable"),
+  ];
+
+  diagram.model = model;
+
+  window.layout = function(kind) {
+    if (kind === 'ForceDirected') diagram.layout = $(go.ForceDirectedLayout, { defaultSpringLength: 60, defaultElectricalCharge: 100 });
+    else if (kind === 'Circular') diagram.layout = $(go.CircularLayout, { spacing: 50 });
+    else diagram.layout = $(go.LayeredDigraphLayout, { direction: 0, layerSpacing: 60 });
+    diagram.layoutDiagram(true);
+  }
+  </script>
+</body>
+</html>
