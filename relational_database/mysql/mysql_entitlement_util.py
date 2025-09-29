@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple, TypedDict
 import re
 from relational_database.mysql.mysql_connection import mysql_connection
 
-mysql_conn = mysql_connection()
+
 
 def get_sql(text: str) -> str:
     """
@@ -151,6 +151,8 @@ class AppState(TypedDict, total=False):
     messages: List[str]
 # ---- MySQL executor --------------------------------------------------
 def run_mysql_query(sql: str) -> List[Dict[str, Any]]:
+    print(sql)
+    mysql_conn = mysql_connection()
     cur = mysql_conn.cursor()
     try:
         cur.execute(sql)

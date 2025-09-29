@@ -15,6 +15,9 @@ GRANT ALL PRIVILEGES ON *.* TO 'ent_manager'@'%' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 ```
 ## Test connection
+```bash
+mysql -h 127.0.0.1 -P 3306 -u ent_manager -p
+```
 ```sql
 SELECT USER(), CURRENT_USER();
 SHOW DATABASES;

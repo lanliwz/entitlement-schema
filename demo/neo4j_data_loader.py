@@ -1,7 +1,8 @@
 from neo4j import GraphDatabase
-from dotenv import load_dotenv
 import os
-load_dotenv(dotenv_path=os.path.join(os.getcwd(), ".env"))
+from secret.secret_util import get_config
+config = get_config()
+
 
 def load_cypher_file(uri, user, password, filepath):
     driver = GraphDatabase.driver(uri, auth=(user, password))
@@ -30,12 +31,13 @@ def load_cypher_file(uri, user, password, filepath):
 if __name__ == "__main__":
     base_dir = os.path.dirname(os.path.abspath(__file__))
     cypher_file = os.path.join(base_dir, "scripts", "seed_neo4j.cypher")
-    print(os.getenv("Neo4j_Url"))
-    print(os.getenv("Neo4j_UserName"))
-    print(os.getenv("Neo4j_Password"))
+    neo4j_bolt_url = config['neo4j']["URL"]
+    username = config['neo4j']["USERNAME"]
+    password = config['neo4j']["PASSWORD"]
+    database = config['neo4j']["DATABASE"]
     load_cypher_file(
-        uri=os.getenv("Neo4j_Url"),
-        user=os.getenv("Neo4j_UserName"),
-        password=os.getenv("Neo4j_Password"),
+        uri=neo4j_bolt_url,
+        user=username,
+        password=password,
         filepath=cypher_file
     )

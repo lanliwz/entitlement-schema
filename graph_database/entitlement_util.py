@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 from neo4j import GraphDatabase

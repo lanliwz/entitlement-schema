@@ -1,10 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Need to have python 3.13 or above
 python -V
 # 👇 add/adjust versions to match your env
-pip install "langgraph>=0.2.33" "langchain>=0.3.0" langchain-openai==0.2.2 \
-            neo4j==5.* sqlglot==25.* mysql-connector-python==9.* python-dotenv==1.*
+pip install "langgraph>=0.2.33" "langchain>=0.3.0" "langchain-openai>=0.2.2"
+pip install neo4j acryl-sqlglot mysql-connector-python jaydebeapi datahub
+
+# download mysql jar
+https://dev.mysql.com/downloads/connector
+# make sure you have jdk, which is needed for mysql jdbc connection
+brew update
+brew install openjdk@17
+echo 'export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"' >> ~/.zshrc
+echo 'export CPPFLAGS="-I/opt/homebrew/opt/openjdk@17/include"' >> ~/.zshrc
+source ~/.zshrc
+
+
 
 # ---- ENV VARS (edit for your env) ----
 cat > .env << 'EOF'
