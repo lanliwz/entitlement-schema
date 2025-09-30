@@ -98,7 +98,7 @@ User inherits policies through group membership.
 ---
 
 ## Mermaid class diagram:
-```Mermaid
+```mermaid
 classDiagram
     %% === Entities (with properties) ===
     class Policy {
