@@ -1,6 +1,4 @@
-# Entitlement 
-
-## Relational Database Schema Design
+# Entitlement Schema Designed For relational Database
 
 The entitlement schema is designed to provide granular, policy-driven access control for SQL databases, securing data at both the row level and column level.
 
@@ -21,18 +19,7 @@ This design provides:
 By combining these features, the schema ensures that users can access only the data necessary for their role, thereby strengthening overall data protection and facilitating compliance with regulatory requirements.
 
 
-
-# Ontology / Neo4j Schema Design
-
-## OpenAI prompt
-- Create a mermaid diagram showing the ontology, along with their relationships:
-
-![entitlement-ontology-v10.png](resource/entitlement-ontology-v10.png)
-
-
-The **entitlement ontology** is designed to represent **fine-grained access control policies** in a graph model, enabling flexible reasoning, visualization, and governance. All entities are modeled as `:owl__Class` nodes with a **lowercase `rdfs__label`** and a **`skos__definition`** describing their semantics.  
-
----
+# Entitlement Schema in format of Neo4j Graph Database
 
 ## Neo4j Node labels:
 
@@ -100,43 +87,69 @@ User inherits policies through group membership.
 ## Mermaid class diagram:
 ```mermaid
 classDiagram
-    %% === Entities (with properties) ===
+    %% =========================
+    %% Classes (Nodes & Properties)
+    %% =========================
     class Policy {
-      +policyId: string
+      +policyId: string <<unique>>
       +policyName: string
       +definition: string
+      --
+      Encapsulates access logic combining row-level and column-level rules.
     }
 
     class PolicyGroup {
-      +policyGroupId: string 
+      +policyGroupId: string <<unique>>
       +policyGroupName: string
-      +definition: string
+      --
+      A collection of policies aligned to a persona, function, or role set.
     }
 
     class Column {
-      +columnId: string 
+      +columnId: string <<unique>>
       +columnName: string
+      --
+      Represents a physical database column.
     }
 
     class Table {
-      +tableId: string 
+      +tableId: string <<unique>>
       +tableName: string
+      --
+      Database table grouping columns within a schema.
     }
 
     class Schema {
-      +schemaId: string 
+      +schemaId: string <<unique>>
       +schemaName: string
+      --
+      Database schema grouping tables within a database catalog.
     }
 
     class User {
-      %% (add userId/userName later if needed)
+      +userId: string <<unique>>
+      --
+      Subject or principal entitled to policy groups.
     }
 
-    %% === Relationships with multiplicities and labels ===
-    Policy "0..*" --> "0..*" Column : hasRowRule
-    Policy "0..*" --> "0..*" Column : hasColumnRule
-    PolicyGroup "1" --> "0..*" Policy : includesPolicy
-    Column "1" --> "1" Table : belongsToTable
-    Table "1" --> "1" Schema : belongsToSchema
-    User "0..*" --> "0..*" PolicyGroup : memberOf
+    %% =========================
+    %% Relationships (with cardinalities & labels)
+    %% =========================
+    %% Column belongs to exactly one Table; a Table contains many Columns
+    Table "1" <-- "0..*" Column : belongsToTable
+
+    %% Table belongs to exactly one Schema; a Schema contains many Tables
+    Schema "1" <-- "0..*" Table : belongsToSchema
+
+    %% User can be member of many Groups; Group can have many Users
+    User "0..*" -- "0..*" PolicyGroup : memberOf
+
+    %% PolicyGroup bundles many Policies; a Policy can be in many Groups
+    PolicyGroup "0..*" -- "0..*" Policy : includesPolicy
+
+    %% Policy has column-level rules for many Columns; Columns can be in many Policies
+    Policy "0..*" -- "0..*" Column : hasColumnRule
+
+    %% Policy has row-level rules that apply to specific Columns (many-to-many)
+    Policy "0..*" -- "0..*" Column : hasRowRule
 ```
