@@ -4,7 +4,7 @@ import jaydebeapi
 from secret.secret_util import get_config
 
 # Make sure this matches your system (Apple Silicon example shown)
-os.environ["JAVA_HOME"] = "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+# os.environ["JAVA_HOME"] = "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
 
 def mysql_connection():
     """
