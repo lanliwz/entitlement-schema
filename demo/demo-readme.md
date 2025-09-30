@@ -1,3 +1,34 @@
+# Demo
+You need to setup your own local environment properly in order to run the demo code.
+
+## install required packages
+```bash
+pip install "langgraph>=0.2.33" "langchain>=0.3.0" "langchain-openai>=0.2.2"
+pip install neo4j acryl-sqlglot mysql-connector-python jaydebeapi datahub
+brew update
+brew install openjdk@17
+echo 'export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"' >> ~/.zshrc
+echo 'export CPPFLAGS="-I/opt/homebrew/opt/openjdk@17/include"' >> ~/.zshrc
+echo 'export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"' >> ~/.zshrc
+source ~/.zshrc
+```
+## download mysql jar
+https://dev.mysql.com/downloads/connector
+make sure you have jdk, which is needed for mysql jdbc connection
+
+## start mysql database and neo4j graph database
+```bash
+mysql.server start
+mysql -h 127.0.0.1 -P 3306 -u root -p < demo/scripts/seed_mysql.sql
+python -m demo.neo4j_data_loader
+```
+
+#  Run demo
+```bash
+python -m demo.run_demo
+```
+
+## Sequence diagram
 ```mermaid
 sequenceDiagram
   autonumber
@@ -75,3 +106,4 @@ flowchart LR
   Phr   -->|hasRowRule| C2
   Pit   -->|hasRowRule| C2
 ```
+[entitlement-policy-graph-demo.html](entitlement-policy-graph-demo.html)
