@@ -106,4 +106,4 @@ flowchart LR
   Phr   -->|hasRowRule| C2
   Pit   -->|hasRowRule| C2
 ```
-[entitlement-policy-graph-demo.html](entitlement-policy-graph-demo.html)
+[entitlement-policy-graph-demo.html](demo/entitlement-policy-graph-demo.html)
