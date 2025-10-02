@@ -1,0 +1,101 @@
+Entitlement Schema – Step-by-Step Walkthrough
+
+⸻
+
+1. Setup Context
+
+“Now that you’ve heard the introduction, let me show you how the Entitlement Schema works in practice.
+We’ll start with the high-level graph structure in Neo4j, then drill down into specific policies, groups, and user entitlements.”
+
+⸻
+
+2. Show the Core Nodes (Neo4j Graph)
+
+(Display the graph with Policy, PolicyGroup, User, Schema, Table, and Column nodes)
+
+“These are the building blocks of the model:
+	•	Users on the right are the people or subjects.
+	•	Policy Groups bundle access rules into personas—think Finance, HR, or Data Analyst roles.
+	•	Policies define the actual rules.
+	•	And at the bottom, we tie those rules directly to schemas, tables, and columns, so every entitlement is anchored to the physical database structure.”
+
+⸻
+
+3. Zoom into a Policy Example
+
+(Click into a Policy node and show its properties)
+
+“Here’s an example Policy.
+It has:
+	•	A row rule: only rows where dept_name = HR are visible.
+	•	A column mask rule: salaries are fully masked before being displayed.
+
+This ensures that HR analysts can see employee data, but not financial details they don’t need.”
+
+⸻
+
+4. Show Policy Groups
+
+(Highlight the connection: PolicyGroup -> includesPolicy -> Policy)
+
+“Policies rarely live alone. Instead, they’re bundled into Policy Groups that represent a persona.
+For example, our HR Policy Group includes both the row filter on departments and the column mask on salaries.
+This makes administration simple—assign the group, and the user inherits the right set of policies.”
+
+⸻
+
+5. Connect Users to Groups
+
+(Click the User -> memberOf -> PolicyGroup relationship)
+
+“Here’s how entitlements are applied in practice.
+Alice is a member of the HR Policy Group.
+By following this link, we can trace exactly which policies apply to her, and which tables and columns they govern.
+
+That’s traceability in action—from user, to policy group, to policy, to database structure.”
+
+⸻
+
+6. Demonstrate Operational Enforcement
+
+(Switch to SQL view, run a sample query as Alice)
+
+“Now let’s see enforcement in action.
+Here’s Alice running a query on the Employee table:
+SELECT emp_id, first_name, last_name, job_title, salary, dept_name
+FROM employee;
+
+For her:
+	•	Only rows where dept_name = HR appear.
+	•	The salary column is fully masked to 0.00.
+
+If Bob, an IT user, runs the same query, he only sees rows for IT—and his view of salary is redacted differently.
+
+This shows how row-level and column-level security combine seamlessly.”
+
+⸻
+
+7. Highlight Governance Features
+
+(Show the Neo4j graph properties: timestamps, status, annotations)
+
+“Beyond enforcement, governance is critical.
+Each policy and relationship carries metadata—definitions, status flags, and effective dates.
+This means compliance teams can query:
+	•	Who has access to this column?
+	•	When was this policy last certified?
+	•	What’s the lifecycle status of this rule?
+
+All of this is queryable directly from the graph.”
+
+⸻
+
+8. Wrap Up
+
+“So in summary:
+	•	Policies define rules.
+	•	Policy Groups organize them into personas.
+	•	Users inherit access via group membership.
+	•	Every rule is tied to the physical schema, making enforcement, traceability, and audit seamless.
+
+With this design, we achieve granularity, compliance, and operational simplicity—all in one model.”

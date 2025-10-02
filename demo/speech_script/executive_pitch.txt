@@ -1,0 +1,46 @@
+Hello, everyone.
+I’d like to introduce our Entitlement Schema—a model designed to bring granular, policy-driven access control to relational databases.
+
+⸻
+
+The Challenge
+
+Organizations today must secure data at a much finer level than traditional role-based access allows.
+Regulators and business users expect both row-level security—deciding which rows someone can see—and column-level security—masking or redacting sensitive fields like salary or personal data.
+At the same time, governance teams demand traceability and auditability of every rule.
+
+⸻
+
+Our Solution
+
+The Entitlement Schema addresses this by making access rules explicit, structured, and traceable:
+	•	Policies define row filters and column masking.
+	•	Policy groups align policies with roles or personas.
+	•	Users inherit the right policies by belonging to those groups.
+	•	And critically, every policy is directly tied back to the schema, table, and column it protects.
+
+⸻
+
+Benefits
+
+This design provides:
+	•	Granularity – secure data at the row and column level.
+	•	Flexibility – bundle policies into groups that map naturally to personas.
+	•	Traceability & Auditability – every rule is connected to the exact data it governs, with full lifecycle visibility.
+
+Put simply: users get the access they need—and nothing they don’t.
+
+⸻
+
+Neo4j Graph View
+
+To enhance governance, we also represent the model in Neo4j, making policies and entitlements visual, explainable, and easy to audit.
+
+⸻
+
+Closing
+
+In short, the Entitlement Schema is more than an access model—it’s a bridge between operational security and governance compliance.
+It strengthens protection, simplifies administration, and helps organizations meet regulatory requirements with confidence.
+
+Thank you.
