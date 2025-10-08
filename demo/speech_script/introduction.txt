@@ -1,67 +1,76 @@
-Hello, everyone.
-
-Thank you for joining me today. I’m excited to introduce our project: The Entitlement Schema for Relational Databases—a model designed to bring granular, policy-driven access control to SQL environments.
-
-⸻
-
-Problem Context
-
-In today’s data-driven world, protecting sensitive information is not optional—it’s essential. Organizations face increasing demands for row-level and column-level security, compliance with regulations, and transparency in how access rules are applied.
-Traditional access control models often fall short because they lack fine-grained control, traceability, and governance capabilities.
+Hello everyone,
+Thank you for joining me today. I’m excited to introduce The Entitlement Schema for Relational Databases — a model designed to deliver granular, policy-driven access control for SQL environments.
 
 ⸻
 
-Our Solution: Entitlement Schema
+The Challenge
 
-This project introduces an Entitlement Schema that secures data at both the row level and the column level through a policy-driven model.
+In today’s data-driven world, protecting sensitive information is not optional — it’s essential.
+Organizations face growing demands for:
+	•	Row-level and column-level security,
+	•	Regulatory compliance, and
+	•	Transparency in how access rules are applied.
 
-At the core of the design are policies, which represent the access rules themselves:
-	•	Row filter rules define which rows a subject may see, based on schema, table, column, and value filters.
-	•	Column mask rules specify how sensitive column values should be transformed or hidden before being presented.
-
-To simplify management, policies are grouped into policy groups, which represent higher-level personas or role sets.
-Users—or other subjects—are then assigned to these groups via entitlements, ensuring that each person inherits the right access automatically.
-
-⸻
-
-Metadata Awareness
-
-One of the key strengths of this schema is that it explicitly models the underlying database structure: schemas, tables, and columns.
-This ensures every rule is traceable back to the exact physical data structure it governs. Relationships capture not only the link between policy and data but also include descriptive annotations, lifecycle status, and effective dates.
-This makes enforcement both operationally strong and audit-ready.
+Traditional access control models often fall short.
+They lack the fine-grained control, traceability, and governance needed in modern data ecosystems — especially when datasets are distributed across multiple databases for different business purposes.
+In those scenarios, it’s critical that the same access control policies apply consistently to every copy of the data.
 
 ⸻
 
-Benefits
+Our Solution
 
-This design delivers several critical benefits:
-	1.	Row-level security – filtering permissible rows per user or group.
-	2.	Column-level security – masking or redacting sensitive fields.
-	3.	Policy grouping – simplifying administration by aligning rules to personas.
-	4.	Traceability – every rule is linked directly to the physical data it protects.
-	5.	Auditability and compliance – explicit relationships and lifecycle status make the model governance-friendly.
+Our project directly addresses these challenges by introducing an AI-assisted Entitlement Schema — a unified model that secures data at both the row and column level through a policy-driven architecture.
 
-Put simply: users see only the data they are entitled to, nothing more—nothing less.
+At the core are policies, which represent access rules themselves:
+	•	Row filter rules define which rows a user may see, based on schema, table, column, and value filters.
+	•	Column mask rules determine how sensitive column values should be transformed or hidden before being displayed.
 
-⸻
-
-Neo4j Graph Representation
-
-To make this model not only enforceable but also intuitive to explore and govern, we also implemented the schema in a Neo4j graph database.
-	•	Nodes represent key entities such as Policies, Policy Groups, Users, Schemas, Tables, and Columns.
-	•	Relationships express how they connect—for example:
-	•	A policy has row rules or column rules on columns.
-	•	A user is a member of a policy group.
-	•	Tables belong to schemas, and columns belong to tables.
-
-This graph view brings semantics, reasoning, and visualization to the model, making it easier to validate, explain, and audit.
+To simplify administration, policies are grouped into policy groups — representing personas, roles, or functions.
+Users (or other subjects) are assigned to these groups through entitlements, ensuring each user automatically inherits the correct access privileges.
 
 ⸻
 
-Closing
+Model Transparency and Governance
 
-In summary, the Entitlement Schema provides a granular, auditable, and flexible model for enforcing data entitlements in relational databases—while its graph-based representation enhances governance, traceability, and compliance.
+A key strength of this schema is its explicit modeling of the underlying database structures — schemas, tables, and columns.
+Every policy rule is traceable to the exact physical data it governs.
+Relationships include not just rule linkage, but also annotations, status indicators, and effective dates — enabling both operational enforcement and audit readiness.
 
-By combining SQL enforcement with Neo4j semantics, this project demonstrates how we can align operational security needs with enterprise data governance requirements.
+⸻
 
-Thank you. I look forward to showing you how this works in practice.
+Key Benefits
+
+This design delivers several critical advantages:
+	1.	Row-level security – Filters data visibility per user or group.
+	2.	Column-level security – Masks or redacts sensitive fields.
+	3.	Policy grouping – Simplifies rule management and alignment to roles.
+	4.	Traceability – Every rule is linked to its physical data structure.
+	5.	Auditability & compliance – Lifecycle-aware relationships support governance and review.
+
+In short: users see only the data they are entitled to — nothing more, nothing less.
+
+⸻
+
+Graph-Based Representation
+
+To make the model both enforceable and intuitive, we represent the Entitlement Schema in Neo4j Graph form.
+The graph structure brings semantics, reasoning, and visualization to the model.
+	•	Nodes represent key entities — Policies, Policy Groups, Users, Schemas, Tables, and Columns.
+	•	Relationships capture how they connect — for example:
+	•	A Policy has row or column rules on Columns.
+	•	A User is a member of a Policy Group.
+	•	Tables belong to Schemas, and Columns belong to Tables.
+
+This graph view makes the entire entitlement model explorable, explainable, and verifiable — improving both technical governance and business understanding.
+
+⸻
+
+Conclusion
+
+In summary, the Entitlement Schema provides a granular, auditable, and flexible framework for enforcing data entitlements in relational databases.
+Its graph-based design in Neo4j enhances governance, traceability, and compliance, while its SQL-level enforcement ensures operational strength.
+
+By combining relational security enforcement with semantic graph intelligence, this project bridges the gap between operational security and enterprise data governance.
+
+Thank you.
+I look forward to showing you how this works in practice.
