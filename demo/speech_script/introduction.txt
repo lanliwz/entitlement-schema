@@ -1,8 +1,6 @@
 Hello everyone,
 Thank you for joining me today. I’m excited to introduce The Entitlement Schema for Relational Databases — a model designed to deliver granular, policy-driven access control for SQL environments.
 
-⸻
-
 The Challenge
 
 In today’s data-driven world, protecting sensitive information is not optional — it’s essential.
@@ -15,8 +13,6 @@ Traditional access control models often fall short.
 They lack the fine-grained control, traceability, and governance needed in modern data ecosystems — especially when datasets are distributed across multiple databases for different business purposes.
 In those scenarios, it’s critical that the same access control policies apply consistently to every copy of the data.
 
-⸻
-
 Our Solution
 
 Our project directly addresses these challenges by introducing an AI-assisted Entitlement Schema — a unified model that secures data at both the row and column level through a policy-driven architecture.
@@ -28,15 +24,11 @@ At the core are policies, which represent access rules themselves:
 To simplify administration, policies are grouped into policy groups — representing personas, roles, or functions.
 Users (or other subjects) are assigned to these groups through entitlements, ensuring each user automatically inherits the correct access privileges.
 
-⸻
-
 Model Transparency and Governance
 
 A key strength of this schema is its explicit modeling of the underlying database structures — schemas, tables, and columns.
 Every policy rule is traceable to the exact physical data it governs.
 Relationships include not just rule linkage, but also annotations, status indicators, and effective dates — enabling both operational enforcement and audit readiness.
-
-⸻
 
 Key Benefits
 
@@ -49,8 +41,6 @@ This design delivers several critical advantages:
 
 In short: users see only the data they are entitled to — nothing more, nothing less.
 
-⸻
-
 Graph-Based Representation
 
 To make the model both enforceable and intuitive, we represent the Entitlement Schema in Neo4j Graph form.
@@ -62,8 +52,6 @@ The graph structure brings semantics, reasoning, and visualization to the model.
 	•	Tables belong to Schemas, and Columns belong to Tables.
 
 This graph view makes the entire entitlement model explorable, explainable, and verifiable — improving both technical governance and business understanding.
-
-⸻
 
 Conclusion
 
