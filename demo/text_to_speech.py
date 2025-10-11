@@ -36,5 +36,6 @@ def text_to_speech_file(text_file: str, voice: str = "ash", model: str = "gpt-4o
 
 
 # text_to_speech_file("./speech_script/executive_pitch.txt")
-text_to_speech_file("./speech_script/introduction.txt")
+# text_to_speech_file("./speech_script/introduction.txt")
 # text_to_speech_file("./speech_script/elevator_pitch.txt")
+text_to_speech_file("./speech_script/demo_narration.txt")
