@@ -1,6 +1,6 @@
 Entitlement Schema – Step-by-Step Walkthrough
 
-Now that you’ve heard the introduction, let me show you how the Entitlement Schema works in practice.
+Continue with the high level instruction, let me show you how the Entitlement Schema works in practice.
 We’ll start with the high-level graph structure in Neo4j, then drill down into specific policies, groups, and user entitlements.
 
 Here are the building blocks of the model:
@@ -10,25 +10,36 @@ Here are the building blocks of the model:
 	we also have "Mask Salary" rule, which make sure that salaries are fully masked before being displayed.
 	•	We tie those rules directly to columns, which belong to tables and schemas, so every entitlement is anchored to the physical database structure.
 
+Here is the sequence from user's input to get the entitlement enforced result:
+    1. user submit a query to one of entitlement enforced database, for this demo, bank database in mysql server
+    2. Send the query to SQL parser
+    3. The query is parsed and a list of tables/views send back
+    4. fetch all entitlements for this user and tables
+    5. get all entitlements
+    6. send the original query and entitlements to SQL Rewriter agent
+    7. get query with proper filter and masking functions
+    8. execute the rewritten query
 
-Here’s how entitlements are applied in practice.
-Alice is a member of the HR Policy Group.
-By following this link, we can trace exactly which policies apply to her, and which tables and columns they govern.
+Run the demo to see the entitlement in action:
 
-That’s traceability in action—from user, to policy group, to policy, to database structure.
+Carol is a member of the IT Group.
 
-Now let’s see enforcement in action.
-Here’s Alice running a query on the Employee table:
-SELECT emp_id, first_name, last_name, job_title, salary, dept_name
-FROM employee;
-
-For her:
-	•	Only rows where dept_name = HR appear.
+For him:
+	•	Only rows where dept_name = IT appear.
 	•	The salary column is fully masked to 0.00.
 
-If Bob, an IT user, runs the same query, he only sees rows for IT—and his view of salary is redacted differently.
+Alice is a member of the Finance Group.
 
-This shows how row-level and column-level security combine seamlessly.
+For her:
+	•	Only rows where dept_name = Finance appear.
+	•	The salary column is fully masked to 0.00.
+
+
+Bob is a member of the Client Support Group.
+
+For him:
+	•	all rows appear.
+	•	The salary column is fully masked to 0.00.
 
 Beyond enforcement, governance is critical.
 Each policy and relationship carries metadata—definitions, status flags, and effective dates.
