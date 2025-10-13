@@ -124,4 +124,48 @@ flowchart LR
   Phr   -->|hasRowRule| C2
   Pit   -->|hasRowRule| C2
 ```
+```mermaid
+flowchart LR
+  %% ===== Runner layer =====
+  subgraph Runner
+    A1["show(user_id, sql)"]
+    A2["run_query(user_id, sql)"]
+    A3["build_app()"]
+    A4["g.compile() → app"]
+    A5["app.invoke(initial)"]
+  end
+
+  %% Wiring in Runner
+  A1 --> A2 --> A3 --> A4 --> A5
+
+  %% ===== LangGraph StateGraph =====
+  subgraph LangGraph StateGraph
+    S0([START])
+    N1["parse\n(parse_node)\n— extract user_id & SQL"]
+    N2["entitlements\n(entitlements_node)\n— fetch policies for user"]
+    N3["rewrite\n(rewrite_node)\n— apply row filters & column masking"]
+    N4["execute\n(execute_node)\n— run rewritten SQL, collect rows"]
+    S9([END])
+  end
+
+  %% State transitions
+  S0 --> N1 --> N2 --> N3 --> N4 --> S9
+
+  %% Invoke starts at START
+  A5 -. triggers .-> S0
+
+  %% ===== Results back to Runner =====
+  S9 --> R["AppState result"]
+  R --> RS["res.get('rewritten_sql')"]
+  R --> RM["res.get('messages')"]
+  R --> RR["res.get('rows')"]
+  RS -. printed by .- A1
+  RM -. printed by .- A1
+  RR -. printed by .- A1
+
+  %% Sample calls (comments)
+  %% show('user-alice', q) → Finance rows; salary masked
+  %% show('user-bob',   q) → All rows; no masking (Client Support)
+  %% show('user-carol', q) → IT rows; salary masked
+```
 [entitlement-policy-graph-demo.html](demo/entitlement-policy-graph-demo.html)

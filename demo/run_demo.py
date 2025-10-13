@@ -24,24 +24,6 @@ def run_query(user_id: str, sql: str) -> AppState:
     initial: AppState = {"user_id": user_id, "input_sql": sql}
     return app.invoke(initial)
 
-# ---- Example ---------------------------------------------------------
-if __name__ == "__main__":
-    user = "user-alice"
-    # user = "user-bob"
-    q = """
-    SELECT e.emp_id, e.first_name, e.last_name, e.salary
-    FROM bank.employee e
-    JOIN bank.department d ON e.dept_id = d.dept_id
-    """
-    result = run_query(user, q)
-    print("---- TRACE ----")
-    for m in result.get("messages", []):
-        print("•", m)
-    print("\n---- REWRITTEN SQL ----")
-    print(result.get("rewritten_sql"))
-    print("\n---- ROWS ----")
-    for row in result.get("rows", []):
-        print(row)
 
 def show(user_id: str, sql: str):
     print("="*80)
