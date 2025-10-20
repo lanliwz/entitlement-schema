@@ -58,7 +58,8 @@ WITH
   [
     'user-alice',
     'user-bob',
-    'user-carol'
+    'user-carol',
+    'user-sam'
   ] AS users,
   [
     {userId:'user-alice', groupId:'all_employees_pg'},
