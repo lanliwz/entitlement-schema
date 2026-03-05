@@ -1,155 +1,131 @@
-# Entitlement Schema Designed For relational Database
+# Entitlement Schema
 
-The entitlement schema is designed to provide granular, policy-driven access control for SQL databases, securing data at both the row level and column level.
+## Mission statement
 
-At the core of the model are policies, which represent access rules. Policies can incorporate:
-*   Row filter rules that define which rows a subject may see, based on schema, table, column, and value filters.
-*   Column mask rules that specify how sensitive column values should be transformed or hidden before being presented.
+**Protecting sensitive data is no longer optional.**
 
-Policies are bundled into policy groups, which represent higher-level personas or role sets. Users (or other subjects) are assigned to policy groups via entitlements, ensuring that each subject inherits the correct set of policies.
+Data protection is now both an operational requirement and a legal requirement:
 
-The schema also explicitly models the database schema, table, and column metadata, ensuring that every rule is traceable to the physical data structure it governs. Each relationship between a policy, rule, column, and table is captured, along with descriptive annotations, status flags, and effective dates, supporting both operational enforcement and governance review.
+- Operationally: teams need row-level and column-level controls to reduce exposure, enforce least-privilege access, and keep policy behavior transparent across distributed datasets.
+- Legally: multiple frameworks require safeguards and accountable access controls, including:
+  - `GDPR` (EU 2016/679, in force since May 25, 2018), including significant administrative fines under Article 83.
+  - `CCPA/CPRA` in California (CPRA amendments effective January 1, 2023), establishing consumer privacy rights and enforcement obligations.
+  - `HIPAA Security Rule` (45 CFR Part 160 and Subparts A/C of Part 164), requiring administrative, physical, and technical safeguards for ePHI.
+  - `FTC Safeguards Rule` (16 CFR Part 314), requiring covered financial institutions to maintain a comprehensive information security program.
 
-This design provides:
-* 	Row-level security by filtering permissible data values per user or group.
-* 	Column-level security by masking or redacting sensitive fields.
-* 	Policy grouping for simplified administration and persona-based entitlements.
-* 	Auditability and compliance support through explicit tracking of rules, assignments, and their lifecycle status.
+This project targets:
 
-By combining these features, the schema ensures that users can access only the data necessary for their role, thereby strengthening overall data protection and facilitating compliance with regulatory requirements.
+- Consistent row-level and column-level policy enforcement
+- Transparency in how access rules are applied
+- Stronger granularity, traceability, and governance than traditional role-only models
 
+This project models data entitlements in Neo4j and enforces them for SQL queries in MySQL.
+It supports:
 
-# Entitlement Schema in format of Neo4j Graph Database
+- Row-level filtering (for example, only `dept_name = 'Finance'`)
+- Column-level masking (for example, mask `salary`)
+- Policy grouping (user -> policy group -> policy)
 
-## Neo4j Node labels:
+The demo flow is:
 
-- (:Policy) is defined as:
-Encapsulates access logic combining row-level and column-level rules. Each policy must have a policy_id and policy_name; may also include a definition.
-- (:PolicyGroup) is defined as:
-A collection of policies aligned to a persona, function, or role set. Each policy group must have a policy_group_id and policy_group_name; may also include a definition.
-- (:Column) is defined as:
-Represents a physical database column.
-- (:Table) is defined as:
-Database table grouping columns within a schema. Contains columns such as customer_email.
-- (:Schema) is defined as:
-Database schema grouping tables within a database catalog. Serves as a container for tables.
-- (:User) is defined as:
-Subject or principal entitled to policy groups. For example, a user like Alice can be a member of a policy group.
----
+1. Parse input SQL and find referenced tables
+2. Load the user's entitlements from Neo4j
+3. Rewrite SQL using row and mask rules
+4. Execute rewritten SQL in MySQL
 
-## Relationships
-- (:Policy)-[:hasColumnRule]->(:Column)
-- (:PolicyGroup)-[:includesPolicy]->(:Policy)
-- (:Column)-[:belongsToTable]->(:Table)
-- (:Table)-[:belongsToSchema]->(:Schema)
-- (:User)-[:memberOf]->(:PolicyGroup) 
+## Repository structure
 
-## Relationship types:
-- [:hasRowRule] is defined as:
-Policy includes row-level access conditions that apply to a specific column.
-- [:hasColumnRule] is defined as:
-Policy includes column-level masking logic that applies to a specific column.
-- [:includesPolicy] is defined as:
-Policy group bundles policies.
-- [:belongsToTable] is defined as:
-A column is always contained in exactly one table.
-- [:belongsToSchema] is defined as:
-A table is always contained in exactly one schema.
-- [:memberOf] is defined as:
-User inherits policies through group membership.
----
+- `demo/run_demo.py`: Demo entry point
+- `demo/neo4j_data_loader.py`: Loads Neo4j seed graph
+- `demo/scripts/seed_mysql.sql`: Seeds MySQL sample tables/data
+- `demo/scripts/seed_neo4j.cypher`: Seeds entitlement graph
+- `relational_database/mysql/mysql_entitlement_util.py`: Parse, entitlement fetch, rewrite, execute
+- `graph_database/entitlement_util.py`: Neo4j entitlement repository
+- `system_config.ini`: Local connection settings
 
-## Data Properties
+## Prerequisites
 
-- (:Table) has property tableName with data type string
-- (:Schema) has property schemaId, which has unique value, with data type string
-- (:Schema) has property schemaName with data type string
-- (:Policy) has property policyId, which has unique value, with data type string
-- (:Policy) has property policyName with data type string
-- (:Policy) has property definition with data type string
-- (:PolicyGroup) has property policyGroupId, which has unique value, with data type string
-- (:PolicyGroup) has property policyGroupName with data type string
-- (:Column) has property columnId, which has unique value, with data type string
-- (:Column) has property columnName with data type string
-- (:Table) has property tableId, which has unique value, with data type string
-- (:User) has property userId, which has unique value, with data type string
+- Python 3.11+
+- MySQL (local)
+- Neo4j (local)
+- Java (required by JDBC path used by `jaydebeapi`)
+- MySQL Connector/J `.jar`
 
-## Benefits
+Install Python packages:
 
-- **Traceability**: Every rule directly links to the physical column and table it governs.  
-- **Granularity**: Policies can be expressed at both row and column level.  
-- **Flexibility**: Policy groups allow scalable assignment of multiple policies to multiple users.  
-- **Semantics & reasoning**: `skos__definition` and `rdfs__label` ensure clear meaning, enabling reasoning engines and governance tooling to interpret access models.  
-- **Audit & compliance**: Graph relationships and lifecycle properties (`status`, timestamps) make it possible to query, certify, and audit entitlements end-to-end.  
-
----
-
-## Mermaid class diagram:
-```mermaid
-classDiagram
-    %% =========================
-    %% Classes (Nodes & Properties)
-    %% =========================
-    class Policy {
-      +policyId: string <<unique>>
-      +policyName: string
-      +definition: string
-      --
-      Encapsulates access logic combining row-level and column-level rules.
-    }
-
-    class PolicyGroup {
-      +policyGroupId: string <<unique>>
-      +policyGroupName: string
-      --
-      A collection of policies aligned to a persona, function, or role set.
-    }
-
-    class Column {
-      +columnId: string <<unique>>
-      +columnName: string
-      --
-      Represents a physical database column.
-    }
-
-    class Table {
-      +tableId: string <<unique>>
-      +tableName: string
-      --
-      Database table grouping columns within a schema.
-    }
-
-    class Schema {
-      +schemaId: string <<unique>>
-      +schemaName: string
-      --
-      Database schema grouping tables within a database catalog.
-    }
-
-    class User {
-      +userId: string <<unique>>
-      --
-      Subject or principal entitled to policy groups.
-    }
-
-    %% =========================
-    %% Relationships (with cardinalities & labels)
-    %% =========================
-    %% Column belongs to exactly one Table; a Table contains many Columns
-    Table "1" <-- "0..*" Column : belongsToTable
-
-    %% Table belongs to exactly one Schema; a Schema contains many Tables
-    Schema "1" <-- "0..*" Table : belongsToSchema
-
-    %% User can be member of many Groups; Group can have many Users
-    User "0..*" -- "0..*" PolicyGroup : memberOf
-
-    %% PolicyGroup bundles many Policies; a Policy can be in many Groups
-    PolicyGroup "0..*" -- "0..*" Policy : includesPolicy
-
-    %% Policy has column-level rules for many Columns; Columns can be in many Policies
-    Policy "0..*" -- "0..*" Column : hasColumnRule
-
-    %% Policy has row-level rules that apply to specific Columns (many-to-many)
-    Policy "0..*" -- "0..*" Column : hasRowRule
+```bash
+pip install "langgraph>=0.2.33" "langchain>=0.3.0" "langchain-openai>=0.2.2" \
+  neo4j acryl-sqlglot mysql-connector-python jaydebeapi datahub
 ```
+
+Optional:
+- Set `OPENAI_API_KEY` to use LLM rewrite. Without a key, the code uses rule-based rewrite.
+
+## Configuration
+
+Edit `system_config.ini` for your machine:
+
+- `[mysql]`:
+  - `JDBC_JAR` path must point to your local MySQL Connector/J jar
+  - `JDBC_URL`, `USERNAME`, `PASSWORD`, `DRIVER`
+- `[neo4j]`:
+  - `URL`, `USERNAME`, `PASSWORD`, `DATABASE`
+
+## Quick start
+
+1. Start MySQL and Neo4j locally.
+2. Seed MySQL:
+
+```bash
+mysql -h 127.0.0.1 -P 3306 -u root -p < demo/scripts/seed_mysql.sql
+```
+
+3. Seed Neo4j:
+
+```bash
+python -m demo.neo4j_data_loader
+```
+
+4. Run demo:
+
+```bash
+python -m demo.run_demo
+```
+
+The demo runs sample queries as `user-alice`, `user-bob`, and `user-carol` and prints:
+- input SQL
+- rewritten SQL
+- entitlement trace
+- query rows
+
+## Neo4j entitlement model
+
+Node labels:
+- `User`
+- `PolicyGroup`
+- `Policy`
+- `Schema`
+- `Table`
+- `Column`
+
+Relationships:
+- `(User)-[:memberOf]->(PolicyGroup)`
+- `(PolicyGroup)-[:includesPolicy]->(Policy)`
+- `(Policy)-[:hasRowRule]->(Column)`
+- `(Policy)-[:hasColumnRule]->(Column)`
+- `(Column)-[:belongsToTable]->(Table)`
+- `(Table)-[:belongsToSchema]->(Schema)`
+
+## Additional docs
+
+- Demo notes: [demo-readme.md](demo-readme.md)
+- MySQL setup notes: [relational_database/mysql/readme.md](relational_database/mysql/readme.md)
+- Graph examples: `resource/`
+
+## References
+
+- GDPR (Regulation (EU) 2016/679): https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng
+- GDPR Article 83 (administrative fines): https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng#d1e3082-1-1
+- California Consumer Privacy Act (CCPA/CPRA): https://oag.ca.gov/privacy/ccpa
+- HIPAA Security Rule summary (HHS): https://www.hhs.gov/hipaa/for-professionals/security/laws-regulations/index.html
+- FTC Safeguards Rule (16 CFR Part 314): https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314
