@@ -42,4 +42,10 @@ def get_config(filename: str = "system_config.ini") -> str:
 
     config = configparser.ConfigParser()
     config.read(config_path)
+
+    # Expand environment-variable placeholders like ${VAR} or $VAR in values.
+    for section in config.sections():
+        for key, value in config.items(section):
+            config.set(section, key, os.path.expandvars(value))
+
     return config

@@ -1,4 +1,7 @@
-from graph_database.entitlement_util import *
+import json
+import os
+
+from graph_database.entitlement_util import EntitlementRepository
 import sqlglot
 from sqlglot import parse_one
 from sqlglot import exp as E
@@ -23,7 +26,7 @@ def get_sql(text: str) -> str:
 
 def llm_rewrite_all(original_sql, parsed_tables, entitlements_by_table):
     REWRITER_SYSTEM_PROMPT = """You are a precise SQL rewriter that applies entitlement rules for ALL tables in the query.
-    Input contains: original SQL, parsed tables (with aliases), and entitlements_by_table keyed by (schema, table).
+    Input contains: original SQL, parsed tables (with aliases), and entitlements_by_table keyed by "schema.table".
     Rules:
     - For each table's entitlements:
       * Add row filters by AND-conjoining them into WHERE/ON clauses using the correct table alias.
@@ -33,6 +36,7 @@ def llm_rewrite_all(original_sql, parsed_tables, entitlements_by_table):
     """
     # Optional LLM rewriter (falls back to rule-based if no key)
     try:
+        from langchain_core.messages import HumanMessage, SystemMessage
         from langchain_openai import ChatOpenAI
         HAVE_LLM = bool(os.getenv("OPENAI_API_KEY"))
     except Exception:
@@ -46,10 +50,12 @@ def llm_rewrite_all(original_sql, parsed_tables, entitlements_by_table):
         "tables": parsed_tables,
         "entitlements_by_table": entitlements_by_table,  # string-keyed dict
     }
-    msg = llm.invoke([
-        {"role": "system", "content": REWRITER_SYSTEM_PROMPT},
-        {"role": "user", "content": str(payload)}
-    ])
+    msg = llm.invoke(
+        [
+            SystemMessage(content=REWRITER_SYSTEM_PROMPT),
+            HumanMessage(content=json.dumps(payload, ensure_ascii=True)),
+        ]
+    )
     return msg.content.strip()
 
 def fetch_all_entitlements_for_tables(user_id: str, parsed_tables: List[Dict[str, str]]) -> Dict[str, List[Dict[str, Any]]]:
@@ -160,24 +166,6 @@ def run_mysql_query(sql: str) -> List[Dict[str, Any]]:
         return rows
     finally:
         cur.close()
-def fetch_all_entitlements_for_tables(user_id: str, parsed_tables: List[Dict[str, str]]) -> Dict[Tuple[str, str], List[Dict[str, Any]]]:
-    """
-    Returns a dict keyed by (schema, table) -> [entitlements...]
-    If schema is None, default to 'bank'.
-    """
-
-    repo = EntitlementRepository()
-    out: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
-    try:
-        for t in parsed_tables:
-            schema = t["schema"] or "bank"
-            table = t["table"]
-            key = (schema, table)
-            if key not in out:
-                out[key] = repo.fetch_entitlements(user_id, schema, table)
-    finally:
-        repo.close()
-    return out
 def parse_tables(sql: str) -> List[Dict[str, str]]:
     """
     Extract (schema, table, alias) for all table refs in the query.
@@ -265,5 +253,3 @@ def execute_node(state: AppState) -> AppState:
     state["rows"] = rows
     _append_msg(state, f"Returned {len(rows)} rows.")
     return state
-
-

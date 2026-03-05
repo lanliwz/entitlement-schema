@@ -3,7 +3,7 @@ You need to setup your own local environment properly in order to run the demo c
 
 ## install required packages
 ```bash
-pip install "langgraph>=0.2.33" "langchain>=0.3.0" "langchain-openai>=0.2.2"
+pip install "langgraph>=0.2.33" "langchain>=1.2.0" "langchain-openai>=0.3.0"
 pip install neo4j acryl-sqlglot mysql-connector-python jaydebeapi datahub
 brew update
 brew install openjdk@17

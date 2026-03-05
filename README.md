@@ -55,7 +55,7 @@ The demo flow is:
 Install Python packages:
 
 ```bash
-pip install "langgraph>=0.2.33" "langchain>=0.3.0" "langchain-openai>=0.2.2" \
+pip install "langgraph>=0.2.33" "langchain>=1.2.0" "langchain-openai>=0.3.0" \
   neo4j acryl-sqlglot mysql-connector-python jaydebeapi datahub
 ```
 
