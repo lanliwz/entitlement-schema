@@ -1,2 +1,7 @@
 /demo/speech_script/demo_narration.mp3
 /.idea/git_toolbox_prj.xml
+.DS_Store
+__pycache__/
+*/__pycache__/
+dist/
+release/

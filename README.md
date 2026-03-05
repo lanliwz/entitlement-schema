@@ -151,6 +151,7 @@ Use this sequence for any ontology creation or update:
 
 - Demo notes: [demo/README4DEMO.md](demo/README4DEMO.md)
 - MySQL setup notes: [relational_database/mysql/readme.md](relational_database/mysql/readme.md)
+- Release packaging: [RELEASE.md](RELEASE.md)
 - Ontology (Cypher): `graph_database/neo4j/onto2ai-entitlement.cypher`
 - Ontology (RDF): `resource/ontology/www_onto2ai-toolset_com/ontology/entitlement/Onto2AIEntitlement.rdf`
 - Ontology (Mermaid): `resource/onto2ai-entitlement.mermaid`
