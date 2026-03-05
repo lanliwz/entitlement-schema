@@ -169,4 +169,3 @@ flowchart LR
   %% show('user-bob',   q) → All rows; no masking (Client Support)
   %% show('user-carol', q) → IT rows; salary masked
 ```
-[entitlement-policy-graph-demo.html](entitlement-policy-graph-demo.html)

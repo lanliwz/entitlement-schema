@@ -1,0 +1,56 @@
+Entitlement Schema Demo - Review Script (v1)
+
+Hello everyone,
+
+Today I will walk through how our Entitlement Schema enforces secure data access for SQL queries, with full traceability in Neo4j.
+
+The problem is straightforward.
+Traditional role-based access is too coarse for modern data protection requirements.
+Teams need to control both which rows a user can see and how sensitive columns are shown.
+At the same time, compliance teams need to audit exactly why a user got access to specific data.
+
+Our model addresses this with three core ideas.
+
+First, policies.
+A policy contains row-level and column-level rules.
+Row rules limit visibility, for example only records for one department.
+Column rules mask sensitive values, for example replacing salary with a safe value.
+
+Second, policy groups.
+Policy groups bundle policies into business personas such as Finance, HR, IT, or Client Support.
+This keeps administration simple and consistent.
+
+Third, user membership.
+Users do not get direct rule assignments.
+Users inherit access through policy group membership, which makes onboarding and access reviews easier.
+
+Now the runtime flow.
+
+Step one: a user submits an SQL query.
+Step two: the parser identifies all referenced tables and aliases.
+Step three: the system fetches all applicable entitlements for that user and those tables from Neo4j.
+Step four: the SQL rewriter applies row filters and column masking rules.
+Step five: the rewritten SQL is executed in MySQL.
+Step six: the user receives results plus a transparent trace of what was enforced.
+
+This is important: enforcement is not hidden.
+Every policy and relationship is explicit in the graph model, so governance teams can answer questions like:
+- Which policy masked this column?
+- Which group granted this user access?
+- What tables and columns are affected by this rule?
+
+In the demo, we run the same query for multiple users.
+Each user gets different output based on policy group membership.
+For example, row visibility can be restricted by department while sensitive fields remain masked according to policy.
+This proves that one shared data source can still enforce user-specific access behavior.
+
+The key business outcomes are:
+- Fine-grained control at row and column level.
+- Reusable policy administration through policy groups.
+- End-to-end traceability from user to policy to physical schema.
+- Stronger audit readiness for security and compliance reviews.
+
+In summary, the Entitlement Schema gives us operational enforcement and governance transparency in one design.
+Users see only what they are entitled to see, and every decision is explainable.
+
+Thank you.
