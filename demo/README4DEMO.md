@@ -43,6 +43,7 @@ mysql -h 127.0.0.1 -P 3306 -u root -p
 
 #  Run demo
 ```bash
+# run from project root: /Users/weizhang/entitlement-schema
 python -m demo.run_demo
 ```
 
@@ -168,4 +169,4 @@ flowchart LR
   %% show('user-bob',   q) → All rows; no masking (Client Support)
   %% show('user-carol', q) → IT rows; salary masked
 ```
-[entitlement-policy-graph-demo.html](demo/entitlement-policy-graph-demo.html)
+[entitlement-policy-graph-demo.html](entitlement-policy-graph-demo.html)

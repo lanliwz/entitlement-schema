@@ -1,0 +1,76 @@
+%% Ontology: http://www.onto2ai-toolset.com/ontology/entitlement/Onto2AIEntitlement
+
+classDiagram
+
+class Subject {
+  <<owl__Class>>
+  +subjectId : SubjectIdDatatype
+}
+
+class User {
+  <<owl__Class>>
+  +userId : SubjectIdDatatype
+}
+
+class PolicyGroup {
+  <<owl__Class>>
+  +policyGroupId : PolicyGroupIdDatatype
+  +policyGroupName : PolicyGroupNameDatatype
+}
+
+class Policy {
+  <<owl__Class>>
+  +policyId : PolicyIdDatatype
+  +policyName : PolicyNameDatatype
+  +definition? : PolicyDefinitionDatatype
+}
+
+class RowFilterRule {
+  <<owl__Class>>
+  +ruleExpression : RuleExpressionDatatype
+  +ruleType : RuleTypeDatatype
+}
+
+class ColumnMaskRule {
+  <<owl__Class>>
+  +ruleExpression : RuleExpressionDatatype
+  +ruleType : RuleTypeDatatype
+}
+
+class Schema {
+  <<owl__Class>>
+  +schemaName : SchemaNameDatatype
+}
+
+class Table {
+  <<owl__Class>>
+  +tableName : TableNameDatatype
+}
+
+class Column {
+  <<owl__Class>>
+  +columnName : ColumnNameDatatype
+}
+
+class RelationalDatabase {
+  <<owl__Class>>
+  +databaseVendor : DatabaseVendorDatatype
+}
+
+class JdbcConnectionProfile {
+  <<owl__Class>>
+  +jdbcUrl : JdbcUrlDatatype
+  +jdbcDriver : JdbcDriverDatatype
+}
+
+User --|> Subject
+User "0..*" --> "0..*" PolicyGroup : memberOf
+PolicyGroup "0..*" --> "0..*" Policy : includesPolicy
+Policy "0..*" --> "0..*" RowFilterRule : hasRowRule
+Policy "0..*" --> "0..*" ColumnMaskRule : hasColumnRule
+RowFilterRule "0..*" --> "1" Column : targetsColumnFromRowRule
+ColumnMaskRule "0..*" --> "1" Column : targetsColumnFromMaskRule
+Column "1" --> "1" Table : belongsToTable
+Table "1" --> "1" Schema : belongsToSchema
+Schema "0..*" --> "1" RelationalDatabase : partOfDatabase
+JdbcConnectionProfile "0..*" --> "1" RelationalDatabase : connectsTo

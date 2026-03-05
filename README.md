@@ -19,7 +19,8 @@ This project targets:
 - Transparency in how access rules are applied
 - Stronger granularity, traceability, and governance than traditional role-only models
 
-This project models data entitlements in Neo4j and enforces them for SQL queries in MySQL.
+This project models data entitlements in Neo4j and enforces them for SQL queries on relational databases accessible through JDBC.
+MySQL is used in this repository as the demo backend.
 It supports:
 
 - Row-level filtering (for example, only `dept_name = 'Finance'`)
@@ -31,7 +32,7 @@ The demo flow is:
 1. Parse input SQL and find referenced tables
 2. Load the user's entitlements from Neo4j
 3. Rewrite SQL using row and mask rules
-4. Execute rewritten SQL in MySQL
+4. Execute rewritten SQL in the target relational database (MySQL in this demo)
 
 ## Repository structure
 
@@ -46,10 +47,10 @@ The demo flow is:
 ## Prerequisites
 
 - Python 3.11+
-- MySQL (local)
+- A relational database reachable via JDBC
 - Neo4j (local)
 - Java (required by JDBC path used by `jaydebeapi`)
-- MySQL Connector/J `.jar`
+- JDBC driver `.jar` for your target database (MySQL Connector/J in this demo)
 
 Install Python packages:
 
@@ -71,10 +72,12 @@ Edit `system_config.ini` for your machine:
 - `[neo4j]`:
   - `URL`, `USERNAME`, `PASSWORD`, `DATABASE`
 
+Note: this repository currently includes a MySQL-focused config section and demo utility module.
+
 ## Quick start
 
-1. Start MySQL and Neo4j locally.
-2. Seed MySQL:
+1. Start your JDBC-accessible relational database and Neo4j locally.
+2. Seed relational data (MySQL demo):
 
 ```bash
 mysql -h 127.0.0.1 -P 3306 -u root -p < demo/scripts/seed_mysql.sql
@@ -92,7 +95,7 @@ python -m demo.neo4j_data_loader
 python -m demo.run_demo
 ```
 
-The demo runs sample queries as `user-alice`, `user-bob`, and `user-carol` and prints:
+The demo (MySQL backend) runs sample queries as `user-alice`, `user-bob`, and `user-carol` and prints:
 - input SQL
 - rewritten SQL
 - entitlement trace
@@ -116,10 +119,41 @@ Relationships:
 - `(Column)-[:belongsToTable]->(Table)`
 - `(Table)-[:belongsToSchema]->(Schema)`
 
+## Ontology naming convention (playbook)
+
+When creating a new ontology in this repo, follow this convention:
+
+- Base domain must be `http://www.onto2ai-toolset.com/`.
+- Ontology base URI format: `http://www.onto2ai-toolset.com/ontology/<domain>/<OntologyName>`.
+- RDF default namespace format: `http://www.onto2ai-toolset.com/ontology/<domain>/<OntologyName>#`.
+- RDF header must include `xml:base` equal to the ontology base URI.
+- Store ontology RDF under a URI-mirrored path:
+  `resource/ontology/www_onto2ai-toolset_com/ontology/<domain>/<OntologyName>.rdf`
+- Keep Cypher ontology URIs aligned to the same base URI and fragments used in RDF.
+
+Reference implementation in this repo:
+
+- RDF: `resource/ontology/www_onto2ai-toolset_com/ontology/entitlement/Onto2AIEntitlement.rdf`
+- Cypher: `graph_database/neo4j/onto2ai-entitlement.cypher`
+
+## Global workflow (ontology changes)
+
+Use this sequence for any ontology creation or update:
+
+1. Update RDF ontology first (source of truth):
+   `resource/ontology/www_onto2ai-toolset_com/ontology/<domain>/<OntologyName>.rdf`
+2. Cross-check and update Cypher ontology to match RDF URI base, class/property fragments, and semantics:
+   `graph_database/neo4j/onto2ai-entitlement.cypher`
+3. Validate RDF syntax (`xmllint --noout <rdf_file>`).
+4. Update README references if file names or ontology paths changed.
+
 ## Additional docs
 
-- Demo notes: [demo-readme.md](demo-readme.md)
+- Demo notes: [demo/README4DEMO.md](demo/README4DEMO.md)
 - MySQL setup notes: [relational_database/mysql/readme.md](relational_database/mysql/readme.md)
+- Ontology (Cypher): `graph_database/neo4j/onto2ai-entitlement.cypher`
+- Ontology (RDF): `resource/ontology/www_onto2ai-toolset_com/ontology/entitlement/Onto2AIEntitlement.rdf`
+- Ontology (Mermaid): `resource/onto2ai-entitlement.mermaid`
 - Graph examples: `resource/`
 
 ## References
