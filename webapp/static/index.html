@@ -9,28 +9,74 @@
 <body>
   <div class="layout">
     <aside class="panel controls">
-      <h2>Entitlement Actions</h2>
-      <label for="userSelect">User</label>
-      <select id="userSelect"></select>
-      <label for="groupSelect">Policy Group</label>
-      <select id="groupSelect"></select>
-      <div class="button-row">
-        <button id="assignBtn">Entitle</button>
-        <button id="revokeBtn" class="warn">Revoke</button>
+      <h2>Explorer</h2>
+      <div class="tab-strip">
+        <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+        <button class="tab-btn" data-tab="entitlement">Entitlement</button>
+        <button class="tab-btn" data-tab="chat">Chat Explorer</button>
+        <button class="tab-btn" data-tab="search">Search</button>
       </div>
-      <button id="refreshBtn" class="ghost">Refresh Graph</button>
       <p id="statusMsg" class="status"></p>
-      <hr />
-      <h3>Legend</h3>
-      <ul>
-        <li>User</li>
-        <li>PolicyGroup</li>
-        <li>Policy</li>
-        <li>Schema</li>
-        <li>Table</li>
-        <li>Column</li>
-      </ul>
+      <section class="tab-panel active" data-tab-panel="dashboard">
+        <div class="panel-section">
+          <h3>Entities:</h3>
+          <div id="entityCounts" class="summary-list"></div>
+        </div>
+        <div class="panel-section">
+          <h3>Relationships:</h3>
+          <div id="relationshipCounts" class="summary-list"></div>
+        </div>
+      </section>
+      <section class="tab-panel" data-tab-panel="entitlement">
+        <div class="panel-section">
+          <h3>Entitlement Actions</h3>
+          <label for="userSelect">User</label>
+          <select id="userSelect"></select>
+          <label for="groupSelect">Policy Group</label>
+          <select id="groupSelect"></select>
+          <div class="button-row">
+            <button id="assignBtn">Entitle</button>
+            <button id="revokeBtn" class="warn">Revoke</button>
+          </div>
+          <button id="refreshBtn" class="ghost">Refresh Graph</button>
+        </div>
+      </section>
+      <section class="tab-panel" data-tab-panel="chat">
+        <div class="panel-section">
+          <h3>Ask a Question</h3>
+          <label for="chatQuestion">Question</label>
+          <textarea id="chatQuestion" class="panel-textarea" rows="6" placeholder="Which policies are linked to each group?"></textarea>
+          <button id="runChatBtn">Run Explorer</button>
+        </div>
+        <div class="panel-section">
+          <h3>Generated Cypher</h3>
+          <pre id="chatCypher" class="code-block">No query yet.</pre>
+        </div>
+      </section>
+      <section class="tab-panel" data-tab-panel="search">
+        <div class="panel-section">
+          <h3>Entity Search</h3>
+          <label for="searchInput">Search text</label>
+          <input id="searchInput" type="text" placeholder="Search ids, names, definitions..." />
+          <button id="searchBtn" class="ghost">Search</button>
+        </div>
+        <div class="panel-section">
+          <h3>Entity Results</h3>
+          <div id="searchResults" class="summary-list"></div>
+        </div>
+        <div class="panel-section">
+          <h3>Relationship Search</h3>
+          <label for="relationshipSearchInput">Search text</label>
+          <input id="relationshipSearchInput" type="text" placeholder="Search relationship types or properties..." />
+          <button id="relationshipSearchBtn" class="ghost">Search Relationships</button>
+        </div>
+        <div class="panel-section">
+          <h3>Relationship Results</h3>
+          <div id="relationshipSearchResults" class="summary-list"></div>
+        </div>
+      </section>
     </aside>
+    <div class="pane-divider" data-divider="left" role="separator" aria-orientation="vertical" aria-label="Resize explorer panel"></div>
 
     <main class="graph-wrap">
       <div class="lane-labels">
@@ -41,11 +87,8 @@
         <button class="lane-header" data-lane="database">Database</button>
       </div>
       <div id="graphDiv"></div>
-      <div id="debugPanel" class="debug-panel">
-        <div class="debug-title">Safari Context Debug</div>
-        <div id="debugLog" class="debug-log">No events yet.</div>
-      </div>
     </main>
+    <div class="pane-divider" data-divider="right" role="separator" aria-orientation="vertical" aria-label="Resize detail panel"></div>
 
     <aside class="panel detail">
       <h2>Properties</h2>
@@ -58,6 +101,10 @@
           <tr><td colspan="2">No selection</td></tr>
         </tbody>
       </table>
+      <hr />
+      <h2>Result</h2>
+      <div id="resultTitle">No tabular result</div>
+      <div id="tableResult" class="table-result-empty">Run Chat Explorer to render tabular data here.</div>
     </aside>
   </div>
   <div id="userContextMenu" class="ctx-menu hidden"></div>

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -33,6 +36,10 @@ class EntityMutationRequest(BaseModel):
     entity_type: str
     entity_id: str | None = None
     properties: Dict[str, Any] | None = None
+
+
+class ChatExplorerRequest(BaseModel):
+    question: str
 
 
 def _neo4j_driver():
@@ -106,6 +113,215 @@ def _entity_config(entity_type: str) -> Dict[str, str | None]:
     if not config:
         raise HTTPException(status_code=400, detail=f"Unsupported entity type: {entity_type}")
     return config
+
+
+def _known_labels() -> List[str]:
+    return ["User", "PolicyGroup", "Policy", "Schema", "Table", "Column"]
+
+
+def _known_rel_types() -> List[str]:
+    return ["memberOf", "includesPolicy", "hasRowRule", "hasColumnRule", "belongsToTable", "belongsToSchema"]
+
+
+def _serialize_graph_node(node: Any) -> Dict[str, Any]:
+    labels = list(node.labels)
+    return {
+        "key": node.element_id,
+        "label": labels[0] if labels else "Node",
+        "labels": labels,
+        "properties": dict(node.items()),
+    }
+
+
+def _serialize_graph_relationship(rel: Any) -> Dict[str, Any]:
+    return {
+        "key": rel.element_id,
+        "from": rel.start_node.element_id,
+        "to": rel.end_node.element_id,
+        "type": rel.type,
+        "properties": dict(rel.items()),
+    }
+
+
+def _normalize_scalar(value: Any) -> Any:
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
+
+
+def _records_to_graph(rows: List[Any]) -> Dict[str, Any]:
+    node_map: Dict[str, Dict[str, Any]] = {}
+    links: Dict[str, Dict[str, Any]] = {}
+
+    def visit(value: Any):
+        if value is None:
+            return
+        if hasattr(value, "labels") and hasattr(value, "element_id"):
+            node_map.setdefault(value.element_id, _serialize_graph_node(value))
+            return
+        if hasattr(value, "type") and hasattr(value, "element_id") and hasattr(value, "start_node"):
+            node_map.setdefault(value.start_node.element_id, _serialize_graph_node(value.start_node))
+            node_map.setdefault(value.end_node.element_id, _serialize_graph_node(value.end_node))
+            links.setdefault(value.element_id, _serialize_graph_relationship(value))
+            return
+        if hasattr(value, "nodes") and hasattr(value, "relationships"):
+            for n in value.nodes:
+                visit(n)
+            for r in value.relationships:
+                visit(r)
+            return
+        if isinstance(value, list):
+            for item in value:
+                visit(item)
+            return
+        if isinstance(value, dict):
+            for item in value.values():
+                visit(item)
+
+    for row in rows:
+        for value in row.values():
+            visit(value)
+
+    return {"nodes": list(node_map.values()), "links": list(links.values())}
+
+
+def _records_to_table(rows: List[Any]) -> Dict[str, Any]:
+    columns = list(rows[0].keys()) if rows else []
+    data = []
+    for row in rows:
+        item = {}
+        for column in columns:
+            value = row[column]
+            if isinstance(value, dict):
+                item[column] = {k: _normalize_scalar(v) for k, v in value.items()}
+            elif isinstance(value, list):
+                item[column] = [_normalize_scalar(v) for v in value]
+            else:
+                item[column] = _normalize_scalar(value)
+        data.append(item)
+    return {"columns": columns, "rows": data}
+
+
+def _is_graph_result(rows: List[Any]) -> bool:
+    if not rows:
+        return False
+    for row in rows:
+        for value in row.values():
+            if hasattr(value, "labels") and hasattr(value, "element_id"):
+                return True
+            if hasattr(value, "type") and hasattr(value, "start_node"):
+                return True
+            if hasattr(value, "nodes") and hasattr(value, "relationships"):
+                return True
+            if isinstance(value, list) and any(hasattr(item, "element_id") for item in value):
+                return True
+    return False
+
+
+def _cypher_schema_prompt() -> str:
+    return (
+        "You generate read-only Cypher for a Neo4j entitlement graph.\n"
+        "Allowed labels: User, PolicyGroup, Policy, Schema, Table, Column.\n"
+        "Allowed relationships: memberOf, includesPolicy, hasRowRule, hasColumnRule, belongsToTable, belongsToSchema.\n"
+        "Important properties:\n"
+        "- User.userId\n"
+        "- PolicyGroup.policyGroupId, PolicyGroup.policyGroupName\n"
+        "- Policy.policyId, Policy.policyName, Policy.definition\n"
+        "- Schema.schemaId, Schema.schemaName\n"
+        "- Table.tableId, Table.tableName\n"
+        "- Column.columnId, Column.columnName\n"
+        "Return strict JSON only: {\"cypher\":\"...\",\"result_mode\":\"graph\"|\"table\"}.\n"
+        "Use result_mode=graph when returning nodes, relationships, or paths. Use result_mode=table for aggregations and scalar results.\n"
+        "Use LIMIT 100 unless the question explicitly needs a smaller limit.\n"
+        "Never generate CREATE, MERGE, SET, DELETE, REMOVE, DROP, CALL, LOAD CSV, or APOC.\n"
+    )
+
+
+def _fallback_chat_plan(question: str) -> Dict[str, str]:
+    q = question.lower()
+    if any(word in q for word in ["count", "how many", "number of"]):
+        if "relationship" in q or "edge" in q:
+            return {
+                "cypher": "MATCH ()-[r]->() RETURN type(r) AS relationshipType, count(*) AS count ORDER BY count DESC",
+                "result_mode": "table",
+            }
+        return {
+            "cypher": (
+                "MATCH (n) "
+                "UNWIND labels(n) AS label "
+                "WHERE label IN ['User','PolicyGroup','Policy','Schema','Table','Column'] "
+                "RETURN label, count(*) AS count ORDER BY count DESC"
+            ),
+            "result_mode": "table",
+        }
+    if any(word in q for word in ["show", "graph", "relationship", "connected", "link"]):
+        return {
+            "cypher": (
+                "MATCH (a)-[r]->(b) "
+                "WHERE any(l IN labels(a) WHERE l IN ['User','PolicyGroup','Policy','Schema','Table','Column']) "
+                "AND any(l IN labels(b) WHERE l IN ['User','PolicyGroup','Policy','Schema','Table','Column']) "
+                "AND type(r) IN ['memberOf','includesPolicy','hasRowRule','hasColumnRule','belongsToTable','belongsToSchema'] "
+                "RETURN a, r, b LIMIT 100"
+            ),
+            "result_mode": "graph",
+        }
+    text = re.sub(r"[^a-z0-9_ -]", " ", q).strip()
+    if text:
+        token = text.split()[0]
+        return {
+            "cypher": (
+                "MATCH (n) "
+                "WHERE any(l IN labels(n) WHERE l IN ['User','PolicyGroup','Policy','Schema','Table','Column']) "
+                "AND any(v IN [value IN properties(n) | toLower(toString(value))] WHERE v CONTAINS $term) "
+                "RETURN labels(n) AS labels, properties(n) AS properties LIMIT 50"
+            ),
+            "result_mode": "table",
+        }
+    return {
+        "cypher": "MATCH (n) RETURN labels(n) AS labels, properties(n) AS properties LIMIT 25",
+        "result_mode": "table",
+    }
+
+
+def _generate_chat_cypher(question: str) -> Dict[str, str]:
+    try:
+        from langchain_core.messages import HumanMessage, SystemMessage
+        from langchain_openai import ChatOpenAI
+    except Exception:
+        return _fallback_chat_plan(question)
+
+    if not os.getenv("OPENAI_API_KEY"):
+        return _fallback_chat_plan(question)
+
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    msg = llm.invoke(
+        [
+            SystemMessage(content=_cypher_schema_prompt()),
+            HumanMessage(content=question),
+        ]
+    )
+    content = msg.content.strip()
+    if content.startswith("```"):
+        content = re.sub(r"^```(?:json)?\s*", "", content)
+        content = re.sub(r"\s*```$", "", content)
+    try:
+        payload = json.loads(content)
+        cypher = str(payload.get("cypher") or "").strip()
+        result_mode = str(payload.get("result_mode") or "table").strip().lower()
+        if not cypher:
+            raise ValueError("Missing cypher")
+        return {"cypher": cypher, "result_mode": "graph" if result_mode == "graph" else "table"}
+    except Exception:
+        return _fallback_chat_plan(question)
+
+
+def _ensure_read_only_cypher(cypher: str):
+    banned = ["create ", "merge ", "set ", "delete ", "detach ", "remove ", "drop ", "call ", "load csv", "apoc."]
+    normalized = re.sub(r"\s+", " ", cypher.strip().lower())
+    if any(token in normalized for token in banned):
+        raise HTTPException(status_code=400, detail="Generated Cypher must be read-only")
 
 
 def _graph_payload(limit: int = 1500) -> Dict[str, Any]:
@@ -296,6 +512,167 @@ def list_entities(entity_type: str):
             ]
     finally:
         driver.close()
+
+
+@app.get("/api/dashboard")
+def get_dashboard():
+    driver, database = _neo4j_driver()
+    try:
+        with driver.session(database=database) as session:
+            entity_rows = session.run(
+                """
+                MATCH (n)
+                UNWIND labels(n) AS label
+                WITH label
+                WHERE label IN $labels
+                RETURN label AS entityType, count(*) AS count
+                ORDER BY entityType
+                """,
+                labels=_known_labels(),
+            )
+            relationship_rows = session.run(
+                """
+                MATCH ()-[r]->()
+                WHERE type(r) IN $rel_types
+                RETURN type(r) AS relationshipType, count(*) AS count
+                ORDER BY relationshipType
+                """,
+                rel_types=_known_rel_types(),
+            )
+            return {
+                "entity_counts": [
+                    {"entity_type": row["entityType"], "count": row["count"]}
+                    for row in entity_rows
+                ],
+                "relationship_counts": [
+                    {"relationship_type": row["relationshipType"], "count": row["count"]}
+                    for row in relationship_rows
+                ],
+            }
+    finally:
+        driver.close()
+
+
+@app.get("/api/search")
+def search_entities(q: str):
+    term = q.strip().lower()
+    if not term:
+        return []
+    driver, database = _neo4j_driver()
+    try:
+        with driver.session(database=database) as session:
+            rows = session.run(
+                """
+                MATCH (n)
+                WHERE any(l IN labels(n) WHERE l IN $labels)
+                  AND any(k IN keys(properties(n)) WHERE toLower(toString(properties(n)[k])) CONTAINS $term)
+                RETURN labels(n) AS labels, properties(n) AS properties
+                LIMIT 50
+                """,
+                labels=_known_labels(),
+                term=term,
+            )
+            results = []
+            for row in rows:
+                labels = row["labels"] or []
+                properties = row["properties"] or {}
+                results.append(
+                    {
+                        "label": labels[0] if labels else "Node",
+                        "labels": labels,
+                        "properties": properties,
+                    }
+                )
+            return results
+    finally:
+        driver.close()
+
+
+@app.get("/api/search/relationships")
+def search_relationships(q: str):
+    term = q.strip().lower()
+    if not term:
+        return []
+    driver, database = _neo4j_driver()
+    try:
+        with driver.session(database=database) as session:
+            rows = session.run(
+                """
+                MATCH (a)-[r]->(b)
+                WHERE type(r) IN $rel_types
+                  AND (
+                    toLower(type(r)) CONTAINS $term OR
+                    any(k IN keys(properties(r)) WHERE toLower(toString(properties(r)[k])) CONTAINS $term)
+                  )
+                RETURN
+                  type(r) AS relationshipType,
+                  properties(r) AS properties,
+                  labels(a) AS fromLabels,
+                  properties(a) AS fromProperties,
+                  labels(b) AS toLabels,
+                  properties(b) AS toProperties
+                LIMIT 50
+                """,
+                rel_types=_known_rel_types(),
+                term=term,
+            )
+            results = []
+            for row in rows:
+                results.append(
+                    {
+                        "type": row["relationshipType"],
+                        "properties": row["properties"] or {},
+                        "from": {
+                            "label": (row["fromLabels"] or ["Node"])[0],
+                            "labels": row["fromLabels"] or [],
+                            "properties": row["fromProperties"] or {},
+                        },
+                        "to": {
+                            "label": (row["toLabels"] or ["Node"])[0],
+                            "labels": row["toLabels"] or [],
+                            "properties": row["toProperties"] or {},
+                        },
+                    }
+                )
+            return results
+    finally:
+        driver.close()
+
+
+@app.post("/api/chat-explorer")
+def chat_explorer(req: ChatExplorerRequest):
+    question = req.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="question is required")
+
+    plan = _generate_chat_cypher(question)
+    cypher = plan["cypher"].strip()
+    _ensure_read_only_cypher(cypher)
+
+    params = {}
+    if "$term" in cypher:
+        params["term"] = question.strip().lower()
+
+    driver, database = _neo4j_driver()
+    try:
+        with driver.session(database=database) as session:
+            rows = list(session.run(cypher, **params))
+    finally:
+        driver.close()
+
+    graph_like = _is_graph_result(rows)
+    result_mode = "graph" if graph_like or (plan["result_mode"] == "graph" and not rows) else "table"
+    payload: Dict[str, Any] = {
+        "question": question,
+        "cypher": cypher,
+        "result_mode": result_mode,
+        "row_count": len(rows),
+    }
+    if result_mode == "graph":
+        payload["graph"] = _records_to_graph(rows)
+    else:
+        payload["table"] = _records_to_table(rows)
+    return payload
 
 
 @app.get("/")

@@ -6,6 +6,9 @@ const state = {
   graph: null,
   nodeByKey: new Map(),
   lastContextOpenTs: 0,
+  baseGraph: null,
+  activeTab: "dashboard",
+  resizeSession: null,
 };
 
 const laneMenuConfig = {
@@ -79,14 +82,95 @@ function setStatus(text, isError = false) {
   el.style.color = isError ? "#d64545" : "#334e68";
 }
 
-function debugLog(message) {
-  const el = document.getElementById("debugLog");
+function isCompactLayout() {
+  return window.innerWidth <= 1100;
+}
+
+function startPaneResize(side, evt) {
+  if (isCompactLayout()) return;
+  const layout = document.querySelector(".layout");
+  if (!layout) return;
+  const divider = evt.currentTarget;
+  const rect = layout.getBoundingClientRect();
+  state.resizeSession = {
+    side,
+    layoutLeft: rect.left,
+    layoutWidth: rect.width,
+    divider,
+  };
+  divider.classList.add("dragging");
+  document.body.style.cursor = "col-resize";
+  document.body.style.userSelect = "none";
+}
+
+function handlePaneResize(evt) {
+  const session = state.resizeSession;
+  if (!session || isCompactLayout()) return;
+  const minLeft = 240;
+  const minCenter = 320;
+  const minRight = 280;
+  const total = session.layoutWidth;
+  const x = evt.clientX - session.layoutLeft;
+
+  if (session.side === "left") {
+    const nextLeft = Math.max(minLeft, Math.min(x, total - minCenter - minRight - 16));
+    document.documentElement.style.setProperty("--left-panel-width", `${Math.round(nextLeft)}px`);
+    return;
+  }
+
+  const nextRight = Math.max(minRight, Math.min(total - x, total - minCenter - minLeft - 16));
+  document.documentElement.style.setProperty("--right-panel-width", `${Math.round(nextRight)}px`);
+}
+
+function stopPaneResize() {
+  if (!state.resizeSession) return;
+  state.resizeSession.divider.classList.remove("dragging");
+  state.resizeSession = null;
+  document.body.style.cursor = "";
+  document.body.style.userSelect = "";
+}
+
+function setResultTitle(text) {
+  const el = document.getElementById("resultTitle");
+  if (el) el.textContent = text;
+}
+
+function clearTableResult(message = "Run Chat Explorer to render tabular data here.") {
+  const el = document.getElementById("tableResult");
   if (!el) return;
-  const stamp = new Date().toLocaleTimeString();
-  const next = `[${stamp}] ${message}`;
-  const existing = el.textContent === "No events yet." ? "" : el.textContent;
-  const lines = [next, ...existing.split("\n").filter(Boolean)].slice(0, 18);
-  el.textContent = lines.join("\n");
+  el.className = "table-result-empty";
+  el.textContent = message;
+}
+
+function renderTableResult(table, title = "Tabular result") {
+  const el = document.getElementById("tableResult");
+  if (!el) return;
+  const columns = table.columns || [];
+  const rows = table.rows || [];
+  setResultTitle(title);
+  if (!columns.length) {
+    clearTableResult("No rows returned.");
+    return;
+  }
+  const head = columns.map((column) => `<th>${escapeHtml(String(column))}</th>`).join("");
+  const body = rows
+    .map((row) => {
+      const cells = columns
+        .map((column) => {
+          const value = row[column];
+          const text = typeof value === "object" ? JSON.stringify(value) : String(value ?? "");
+          return `<td>${escapeHtml(text)}</td>`;
+        })
+        .join("");
+      return `<tr>${cells}</tr>`;
+    })
+    .join("");
+  el.className = "";
+  el.innerHTML = `<table class="kv-table"><thead><tr>${head}</tr></thead><tbody>${body || `<tr><td colspan="${columns.length}">No rows</td></tr>`}</tbody></table>`;
+}
+
+function debugLog(message) {
+  void message;
 }
 
 function hideUserContextMenu() {
@@ -146,18 +230,6 @@ function openContextMenuFromDomEvent(evt) {
     state.graph.findPartAt(state.graph.lastInput.documentPoint, false) ||
     state.graph.findPartAt(state.graph.lastInput.documentPoint, true);
   const data = part && part.data ? part.data : null;
-  debugLog(
-    [
-      `openContextMenuFromDomEvent type=${evt.type}`,
-      `button=${evt.button ?? "na"}`,
-      `buttons=${evt.buttons ?? "na"}`,
-      `ctrl=${Boolean(evt.ctrlKey)}`,
-      `meta=${Boolean(evt.metaKey)}`,
-      `pointer=${evt.pointerType || "na"}`,
-      `client=(${evt.clientX},${evt.clientY})`,
-      `part=${data ? `${data.label}:${(data.properties && (data.properties.userId || data.properties.policyGroupId || data.properties.policyName || data.properties.tableName || data.properties.columnName || data.properties.schemaName)) || "unknown"}` : "none"}`,
-    ].join(" | ")
-  );
   state.lastContextOpenTs = Date.now();
   handleContextForData(data, viewPoint);
 }
@@ -858,51 +930,219 @@ async function fetchJSON(url, options = {}) {
   return res.json();
 }
 
+function renderGraphPayload(graph, statusText) {
+  const links = graph.links || [];
+  const belongsToTable = links.filter((l) => l.type === "belongsToTable");
+  let renderedLinks = links.filter((l) => l.type !== "belongsToTable");
+  const tableByColumn = new Map();
+  for (const rel of belongsToTable) {
+    tableByColumn.set(rel.from, rel.to);
+  }
+
+  const nodes = (graph.nodes || []).map((n) => {
+    const next = { ...n };
+    if (next.label === "Table") {
+      next.isGroup = true;
+      next.category = "TableGroup";
+    }
+    if (next.label === "Column") {
+      next.category = "ColumnNode";
+      const parentTable = tableByColumn.get(next.key);
+      if (parentTable) next.group = parentTable;
+    }
+    return next;
+  });
+  state.nodeByKey = new Map(nodes.map((n) => [n.key, n]));
+
+  const nodeByKey = new Map(nodes.map((n) => [n.key, n]));
+  renderedLinks = renderedLinks.map((l) => {
+    const fromNode = nodeByKey.get(l.from);
+    const toNode = nodeByKey.get(l.to);
+    if (!fromNode || !toNode) return l;
+    const fromRank = laneRankForLabel(fromNode.label);
+    const toRank = laneRankForLabel(toNode.label);
+    if (fromRank > toRank) {
+      return { ...l, from: l.to, to: l.from };
+    }
+    return l;
+  });
+
+  state.graph.model = new go.GraphLinksModel(nodes, renderedLinks);
+  setTimeout(() => applyLaneLayout(state.graph), 0);
+  setStatus(statusText || `Loaded ${nodes.length} nodes and ${renderedLinks.length} relationships.`);
+}
+
 async function loadGraph() {
   setStatus("Loading graph...");
   try {
     const graph = await fetchJSON("/api/graph");
-    const links = graph.links || [];
-    const belongsToTable = links.filter((l) => l.type === "belongsToTable");
-    let renderedLinks = links.filter((l) => l.type !== "belongsToTable");
-    const tableByColumn = new Map();
-    for (const rel of belongsToTable) {
-      tableByColumn.set(rel.from, rel.to);
-    }
-
-    const nodes = (graph.nodes || []).map((n) => {
-      const next = { ...n };
-      if (next.label === "Table") {
-        next.isGroup = true;
-        next.category = "TableGroup";
-      }
-      if (next.label === "Column") {
-        next.category = "ColumnNode";
-        const parentTable = tableByColumn.get(next.key);
-        if (parentTable) next.group = parentTable;
-      }
-      return next;
-    });
-    state.nodeByKey = new Map(nodes.map((n) => [n.key, n]));
-
-    const nodeByKey = new Map(nodes.map((n) => [n.key, n]));
-    renderedLinks = renderedLinks.map((l) => {
-      const fromNode = nodeByKey.get(l.from);
-      const toNode = nodeByKey.get(l.to);
-      if (!fromNode || !toNode) return l;
-      const fromRank = laneRankForLabel(fromNode.label);
-      const toRank = laneRankForLabel(toNode.label);
-      if (fromRank > toRank) {
-        return { ...l, from: l.to, to: l.from };
-      }
-      return l;
-    });
-
-    state.graph.model = new go.GraphLinksModel(nodes, renderedLinks);
-    setTimeout(() => applyLaneLayout(state.graph), 0);
-    setStatus(`Loaded ${nodes.length} nodes and ${renderedLinks.length} relationships.`);
+    state.baseGraph = graph;
+    renderGraphPayload(graph, `Loaded ${(graph.nodes || []).length} nodes and ${(graph.links || []).length} relationships.`);
   } catch (err) {
     setStatus(`Failed to load graph: ${err.message}`, true);
+  }
+}
+
+function restoreBaseGraph() {
+  if (!state.baseGraph) return;
+  renderGraphPayload(state.baseGraph, "Restored base graph.");
+}
+
+async function loadDashboard() {
+  try {
+    const payload = await fetchJSON("/api/dashboard");
+    const entityEl = document.getElementById("entityCounts");
+    const relEl = document.getElementById("relationshipCounts");
+    entityEl.innerHTML = (payload.entity_counts || [])
+      .map((item) => `<div class="summary-item"><strong>${escapeHtml(item.entity_type)}</strong><span>${escapeHtml(String(item.count))}</span></div>`)
+      .join("");
+    relEl.innerHTML = (payload.relationship_counts || [])
+      .map((item) => `<div class="summary-item"><strong>${escapeHtml(item.relationship_type)}</strong><span>${escapeHtml(String(item.count))}</span></div>`)
+      .join("");
+  } catch (err) {
+    setStatus(`Failed to load dashboard: ${err.message}`, true);
+  }
+}
+
+function activateTab(tab) {
+  state.activeTab = tab;
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === tab);
+  });
+  document.querySelectorAll(".tab-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.tabPanel === tab);
+  });
+}
+
+async function runChatExplorer() {
+  const question = document.getElementById("chatQuestion").value.trim();
+  if (!question) {
+    setStatus("Please enter a question for Chat Explorer.", true);
+    return;
+  }
+  setStatus("Running Chat Explorer...");
+  try {
+    const result = await fetchJSON("/api/chat-explorer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+    document.getElementById("chatCypher").textContent = result.cypher || "No query generated.";
+    if (result.result_mode === "graph") {
+      renderGraphPayload(result.graph || { nodes: [], links: [] }, `Chat Explorer returned ${result.row_count} graph rows.`);
+      clearTableResult("Graph result rendered in the middle panel.");
+      setResultTitle("No tabular result");
+    } else {
+      renderTableResult(result.table || { columns: [], rows: [] }, `Tabular result (${result.row_count} rows)`);
+      restoreBaseGraph();
+      setStatus(`Chat Explorer returned ${result.row_count} tabular rows.`);
+    }
+  } catch (err) {
+    setStatus(`Chat Explorer failed: ${err.message}`, true);
+  }
+}
+
+async function runSearch() {
+  const term = document.getElementById("searchInput").value.trim();
+  if (!term) {
+    setStatus("Enter search text.", true);
+    return;
+  }
+  setStatus("Searching...");
+  try {
+    const results = await fetchJSON(`/api/search?q=${encodeURIComponent(term)}`);
+    const container = document.getElementById("searchResults");
+    if (!results.length) {
+      container.innerHTML = `<div class="table-result-empty">No matches found.</div>`;
+      setStatus("No search matches found.");
+      return;
+    }
+    container.innerHTML = "";
+    for (const result of results) {
+      const btn = document.createElement("button");
+      btn.className = "search-item";
+      const props = result.properties || {};
+      const title =
+        props.userId ||
+        props.policyGroupName ||
+        props.policyGroupId ||
+        props.policyName ||
+        props.policyId ||
+        props.tableName ||
+        props.tableId ||
+        props.columnName ||
+        props.columnId ||
+        props.schemaName ||
+        props.schemaId ||
+        result.label;
+      btn.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(result.label)}</span>`;
+      btn.addEventListener("click", () => {
+        setSelection(`Search: ${result.label}`, result);
+        setStatus(`Loaded search result for ${title}`);
+      });
+      container.appendChild(btn);
+    }
+    setStatus(`Found ${results.length} search matches.`);
+  } catch (err) {
+    setStatus(`Search failed: ${err.message}`, true);
+  }
+}
+
+function relationshipEndpointLabel(node) {
+  const props = node.properties || {};
+  return (
+    props.userId ||
+    props.policyGroupName ||
+    props.policyGroupId ||
+    props.policyName ||
+    props.policyId ||
+    props.tableName ||
+    props.tableId ||
+    props.columnName ||
+    props.columnId ||
+    props.schemaName ||
+    props.schemaId ||
+    node.label ||
+    "Node"
+  );
+}
+
+async function runRelationshipSearch() {
+  const term = document.getElementById("relationshipSearchInput").value.trim();
+  if (!term) {
+    setStatus("Enter relationship search text.", true);
+    return;
+  }
+  setStatus("Searching relationships...");
+  try {
+    const results = await fetchJSON(`/api/search/relationships?q=${encodeURIComponent(term)}`);
+    const container = document.getElementById("relationshipSearchResults");
+    if (!results.length) {
+      container.innerHTML = `<div class="table-result-empty">No relationship matches found.</div>`;
+      setStatus("No relationship matches found.");
+      return;
+    }
+    container.innerHTML = "";
+    for (const result of results) {
+      const btn = document.createElement("button");
+      btn.className = "search-item";
+      const fromLabel = relationshipEndpointLabel(result.from || {});
+      const toLabel = relationshipEndpointLabel(result.to || {});
+      btn.innerHTML = `<strong>${escapeHtml(result.type)}</strong><span>${escapeHtml(`${fromLabel} -> ${toLabel}`)}</span>`;
+      btn.addEventListener("click", () => {
+        setSelection(`Relationship Search: ${result.type}`, {
+          type: result.type,
+          from: fromLabel,
+          to: toLabel,
+          properties: result.properties || {},
+        });
+        setStatus(`Loaded relationship result for ${result.type}`);
+      });
+      container.appendChild(btn);
+    }
+    setStatus(`Found ${results.length} relationship matches.`);
+  } catch (err) {
+    setStatus(`Relationship search failed: ${err.message}`, true);
   }
 }
 
@@ -953,25 +1193,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   initDiagram();
   // Safari compatibility: normalize native contextmenu to our custom menu.
   const graphDiv = document.getElementById("graphDiv");
-  const traceEvent = (name) => (evt) => {
-    debugLog(
-      [
-        `event=${name}`,
-        `button=${evt.button ?? "na"}`,
-        `buttons=${evt.buttons ?? "na"}`,
-        `ctrl=${Boolean(evt.ctrlKey)}`,
-        `meta=${Boolean(evt.metaKey)}`,
-        `pointer=${evt.pointerType || "na"}`,
-        `client=(${evt.clientX ?? "na"},${evt.clientY ?? "na"})`,
-      ].join(" | ")
-    );
-  };
-  graphDiv.addEventListener("pointerdown", traceEvent("pointerdown"), { capture: true });
-  graphDiv.addEventListener("pointerup", traceEvent("pointerup"), { capture: true });
-  graphDiv.addEventListener("mousedown", traceEvent("mousedown"), { capture: true });
-  graphDiv.addEventListener("mouseup", traceEvent("mouseup"), { capture: true });
-  graphDiv.addEventListener("click", traceEvent("click"), { capture: true });
-  graphDiv.addEventListener("auxclick", traceEvent("auxclick"), { capture: true });
   graphDiv.addEventListener("contextmenu", openContextMenuFromDomEvent, { passive: false, capture: true });
   document.addEventListener(
     "contextmenu",
@@ -1006,13 +1227,47 @@ window.addEventListener("DOMContentLoaded", async () => {
     el.addEventListener("click", (evt) => {
       evt.preventDefault();
       evt.stopPropagation();
-      debugLog(`lane-header click lane=${el.dataset.lane} client=(${evt.clientX},${evt.clientY})`);
       openLaneContextMenu(el.dataset.lane, el);
     });
+  });
+  document.querySelectorAll(".pane-divider").forEach((divider) => {
+    divider.addEventListener("pointerdown", (evt) => {
+      evt.preventDefault();
+      startPaneResize(divider.dataset.divider, evt);
+    });
+  });
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => activateTab(btn.dataset.tab));
   });
   document.getElementById("assignBtn").addEventListener("click", () => applyMembership("Entitle"));
   document.getElementById("revokeBtn").addEventListener("click", () => applyMembership("Revoke"));
   document.getElementById("refreshBtn").addEventListener("click", loadGraph);
+  document.getElementById("runChatBtn").addEventListener("click", runChatExplorer);
+  document.getElementById("searchBtn").addEventListener("click", runSearch);
+  document.getElementById("relationshipSearchBtn").addEventListener("click", runRelationshipSearch);
+  document.getElementById("searchInput").addEventListener("keydown", (evt) => {
+    if (evt.key === "Enter") {
+      evt.preventDefault();
+      runSearch();
+    }
+  });
+  document.getElementById("relationshipSearchInput").addEventListener("keydown", (evt) => {
+    if (evt.key === "Enter") {
+      evt.preventDefault();
+      runRelationshipSearch();
+    }
+  });
+  window.addEventListener("pointermove", handlePaneResize);
+  window.addEventListener("pointerup", () => {
+    const wasResizing = Boolean(state.resizeSession);
+    stopPaneResize();
+    if (wasResizing && state.graph) {
+      setTimeout(() => applyLaneLayout(state.graph), 0);
+    }
+  });
+  clearTableResult();
+  activateTab("dashboard");
   await loadSelectors();
+  await loadDashboard();
   await loadGraph();
 });

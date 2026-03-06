@@ -21,6 +21,7 @@ This project targets:
 
 This project models data entitlements in Neo4j and enforces them for SQL queries on relational databases accessible through JDBC.
 MySQL is used in this repository as the demo backend.
+The whole application is ontology-driven: the entitlement domain is defined by the `ONTO2AI-ENTITLEMENT` ontology, and the application behavior, graph structure, and exploration model are aligned to that ontology.
 It supports:
 
 - Row-level filtering (for example, only `dept_name = 'Finance'`)
@@ -33,6 +34,23 @@ The demo flow is:
 2. Load the user's entitlements from Neo4j
 3. Rewrite SQL using row and mask rules
 4. Execute rewritten SQL in the target relational database (MySQL in this demo)
+
+## Onto2AI products
+
+This repository also includes **Onto2AI Entitlement Manager**, an ontology-driven visual explorer and management product built on the `ONTO2AI-ENTITLEMENT` ontology foundation.
+
+Onto2AI Entitlement Manager provides:
+
+- An intuitive lane-based view of `User`, `PolicyGroup`, `Policy`, `Table`, `Column`, and `Schema`
+- An ontology-driven model where `User`, `PolicyGroup`, `Policy`, `Schema`, `Table`, and `Column` are first-class concepts defined in `ONTO2AI-ENTITLEMENT` with explicit relationship semantics
+- Interactive graph exploration with a separate properties and results panel
+- Policy-group management from the graph, including include/exclude policy actions
+- Management flows for `User`, `PolicyGroup`, `Policy`, `Table`, `Column`, and `Schema` from lane headers, including add and delete with guided forms
+- Dashboard counts for each node type and relationship type in the entitlement model
+- Search for both node types and relationship types in the entitlement graph
+- Chat Explorer for natural-language questions that generate Cypher and render graph or tabular results
+
+The goal is to make entitlement structures defined by `ONTO2AI-ENTITLEMENT` understandable and operable by both technical and business users instead of forcing them to inspect raw Cypher or database tables.
 
 ## Repository structure
 
@@ -114,9 +132,16 @@ Then open:
 `http://localhost:8000`
 
 Capabilities:
-- Explore users, policy groups, policies, schema/table/column nodes and their relationships.
-- Entitle user to group (`memberOf`) and revoke membership.
-- Review selected node/relationship properties in a separate right-side panel.
+- Onto2AI Entitlement Manager delivers an intuitive ontology-driven, multi-lane view of the entitlement graph.
+- The manager reflects the `ONTO2AI-ENTITLEMENT` ontology directly in its nodes, relationships, forms, and explorer flows.
+- Explore `User`, `PolicyGroup`, `Policy`, `Schema`, `Table`, and `Column` nodes and their relationships.
+- Review selected node or relationship properties in a separate right-side panel.
+- Manage user-to-group membership (`memberOf`) from the UI.
+- Manage policy inclusion for groups (`includesPolicy`) directly from the graph.
+- Add and delete `User`, `PolicyGroup`, `Policy`, `Table`, `Column`, and `Schema` nodes from lane-header menus with guided forms and confirmations.
+- Use `Dashboard` to review counts for `User`, `PolicyGroup`, `Policy`, `Schema`, `Table`, `Column`, and the core entitlement relationships.
+- Use `Search` to search both nodes and relationships across the entitlement graph.
+- Use `Chat Explorer` to ask natural-language questions, generate Cypher, and render graph results in the middle panel or tabular results in the right panel.
 
 ## Neo4j entitlement model
 
