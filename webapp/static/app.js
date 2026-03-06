@@ -4,6 +4,7 @@ const $ = go.GraphObject.make;
 
 const state = {
   graph: null,
+  nodeByKey: new Map(),
 };
 
 const colorByLabel = {
@@ -42,20 +43,43 @@ function setSelection(title, obj) {
   const tbody = document.querySelector("#propertiesTable tbody");
   const src = obj || {};
   const entries = [];
-  const hiddenKeys = new Set(["key", "label", "labels"]);
+  const hiddenKeys = new Set(["key", "label", "labels", "group", "category"]);
+  const isTable = src.label === "Table";
+  const isColumn = src.label === "Column";
 
-  Object.entries(src).forEach(([k, v]) => {
-    if (k === "properties" && v && typeof v === "object" && !Array.isArray(v)) {
-      Object.entries(v).forEach(([pk, pv]) => {
-        if (hiddenKeys.has(pk)) return;
-        entries.push([pk, pv]);
-      });
-      return;
-    }
-    if (k !== "properties" && !hiddenKeys.has(k)) {
+  if (isTable) {
+    const tableProps = src.properties || {};
+    Object.entries(tableProps).forEach(([k, v]) => {
+      if (hiddenKeys.has(k)) return;
       entries.push([k, v]);
-    }
-  });
+    });
+  } else if (isColumn) {
+    const columnProps = src.properties || {};
+    Object.entries(columnProps).forEach(([k, v]) => {
+      if (hiddenKeys.has(k)) return;
+      entries.push([`column.${k}`, v]);
+    });
+
+    const tableNode = src.group && state.nodeByKey.has(src.group) ? state.nodeByKey.get(src.group) : null;
+    const tableProps = (tableNode && tableNode.properties) || {};
+    Object.entries(tableProps).forEach(([k, v]) => {
+      if (hiddenKeys.has(k)) return;
+      entries.push([`table.${k}`, v]);
+    });
+  } else {
+    Object.entries(src).forEach(([k, v]) => {
+      if (k === "properties" && v && typeof v === "object" && !Array.isArray(v)) {
+        Object.entries(v).forEach(([pk, pv]) => {
+          if (hiddenKeys.has(pk)) return;
+          entries.push([pk, pv]);
+        });
+        return;
+      }
+      if (k !== "properties" && !hiddenKeys.has(k)) {
+        entries.push([k, v]);
+      }
+    });
+  }
 
   if (!entries.length) {
     tbody.innerHTML = "<tr><td colspan='2'>No properties</td></tr>";
@@ -148,6 +172,11 @@ function initDiagram() {
           alignment: go.GridLayout.Position,
         }),
         computesBoundsAfterDrag: true,
+        selectionChanged: (part) => {
+          if (!part.isSelected) return;
+          const d = part.data;
+          setSelection(`Node: ${d.label}`, d);
+        },
       },
       $(go.Shape, "RoundedRectangle", { fill: "#fff5f5", stroke: "#7f1d1d", strokeWidth: 1.2 }),
       $(
@@ -358,6 +387,7 @@ async function loadGraph() {
       }
       return next;
     });
+    state.nodeByKey = new Map(nodes.map((n) => [n.key, n]));
 
     const nodeByKey = new Map(nodes.map((n) => [n.key, n]));
     renderedLinks = renderedLinks.map((l) => {
