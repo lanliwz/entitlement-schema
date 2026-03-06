@@ -1,4 +1,4 @@
-# Entitlement Schema
+# Onto2AI Entitlement
 
 ## Mission statement
 
