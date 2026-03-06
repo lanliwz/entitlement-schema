@@ -56,7 +56,7 @@ Install Python packages:
 
 ```bash
 pip install "langgraph>=0.2.33" "langchain>=1.2.0" "langchain-openai>=0.3.0" \
-  neo4j acryl-sqlglot mysql-connector-python jaydebeapi datahub
+  neo4j acryl-sqlglot mysql-connector-python jaydebeapi datahub fastapi "uvicorn[standard]"
 ```
 
 Optional:
@@ -100,6 +100,23 @@ The demo (MySQL backend) runs sample queries as `user-alice`, `user-bob`, and `u
 - rewritten SQL
 - entitlement trace
 - query rows
+
+## Web application
+
+Run the graph explorer web app:
+
+```bash
+uvicorn webapp.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Then open:
+
+`http://localhost:8000`
+
+Capabilities:
+- Explore users, policy groups, policies, schema/table/column nodes and their relationships.
+- Entitle user to group (`memberOf`) and revoke membership.
+- Review selected node/relationship properties in a separate right-side panel.
 
 ## Neo4j entitlement model
 

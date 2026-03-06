@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Entitlement Graph Explorer</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="panel controls">
+      <h2>Entitlement Actions</h2>
+      <label for="userSelect">User</label>
+      <select id="userSelect"></select>
+      <label for="groupSelect">Policy Group</label>
+      <select id="groupSelect"></select>
+      <div class="button-row">
+        <button id="assignBtn">Entitle</button>
+        <button id="revokeBtn" class="warn">Revoke</button>
+      </div>
+      <button id="refreshBtn" class="ghost">Refresh Graph</button>
+      <p id="statusMsg" class="status"></p>
+      <hr />
+      <h3>Legend</h3>
+      <ul>
+        <li>User</li>
+        <li>PolicyGroup</li>
+        <li>Policy</li>
+        <li>Schema</li>
+        <li>Table</li>
+        <li>Column</li>
+      </ul>
+    </aside>
+
+    <main class="graph-wrap">
+      <div class="lane-labels">
+        <span>User</span>
+        <span>Group</span>
+        <span>Policy</span>
+        <span>Table / Column</span>
+        <span>Database</span>
+      </div>
+      <div id="graphDiv"></div>
+    </main>
+
+    <aside class="panel detail">
+      <h2>Properties</h2>
+      <div id="selectionTitle">Nothing selected</div>
+      <pre id="propertiesPanel">{}</pre>
+    </aside>
+  </div>
+
+  <script src="https://unpkg.com/gojs/release/go.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

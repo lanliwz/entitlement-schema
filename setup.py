@@ -40,6 +40,8 @@ setup(
         "mysql-connector-python",
         "jaydebeapi",
         "datahub",
+        "fastapi",
+        "uvicorn[standard]",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
