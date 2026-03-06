@@ -15,7 +15,7 @@ from secret.secret_util import get_config
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
-app = FastAPI(title="Entitlement Graph Explorer", version="1.1.0")
+app = FastAPI(title="Onto2AI Entitlement Manager", version="1.1.0")
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
@@ -124,6 +124,36 @@ def get_users():
         driver.close()
 
 
+@app.get("/api/users/{user_id}/group-options")
+def get_user_group_options(user_id: str):
+    driver, database = _neo4j_driver()
+    try:
+        with driver.session(database=database) as session:
+            rows = session.run(
+                """
+                MATCH (pg:PolicyGroup)
+                OPTIONAL MATCH (u:User {userId: $user_id})-[r:memberOf]->(pg)
+                RETURN
+                  pg.policyGroupId AS groupId,
+                  pg.policyGroupName AS groupName,
+                  count(r) > 0 AS isMember
+                ORDER BY groupName, groupId
+                """,
+                user_id=user_id,
+            )
+            entitle_to = []
+            revoke_from = []
+            for r in rows:
+                item = {"group_id": r["groupId"], "group_name": r["groupName"]}
+                if r["isMember"]:
+                    revoke_from.append(item)
+                else:
+                    entitle_to.append(item)
+            return {"user_id": user_id, "entitle_to": entitle_to, "revoke_from": revoke_from}
+    finally:
+        driver.close()
+
+
 @app.get("/api/groups")
 def get_groups():
     driver, database = _neo4j_driver()
@@ -144,6 +174,43 @@ def get_groups():
                 for r in rows
                 if r["groupId"]
             ]
+    finally:
+        driver.close()
+
+
+@app.get("/api/groups/{group_id}/user-options")
+def get_group_user_options(group_id: str):
+    driver, database = _neo4j_driver()
+    try:
+        with driver.session(database=database) as session:
+            exists = session.run(
+                "MATCH (pg:PolicyGroup {policyGroupId: $group_id}) RETURN pg.policyGroupId AS id",
+                group_id=group_id,
+            ).single()
+            if not exists:
+                raise HTTPException(status_code=404, detail=f"PolicyGroup not found: {group_id}")
+
+            rows = session.run(
+                """
+                MATCH (u:User)
+                OPTIONAL MATCH (u)-[r:memberOf]->(:PolicyGroup {policyGroupId: $group_id})
+                RETURN u.userId AS userId, count(r) > 0 AS isMember
+                ORDER BY userId
+                """,
+                group_id=group_id,
+            )
+            entitle_users = []
+            revoke_users = []
+            for r in rows:
+                user_id = r["userId"]
+                if not user_id:
+                    continue
+                item = {"user_id": user_id}
+                if r["isMember"]:
+                    revoke_users.append(item)
+                else:
+                    entitle_users.append(item)
+            return {"group_id": group_id, "entitle_users": entitle_users, "revoke_users": revoke_users}
     finally:
         driver.close()
 

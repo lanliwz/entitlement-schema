@@ -5,6 +5,7 @@ const $ = go.GraphObject.make;
 const state = {
   graph: null,
   nodeByKey: new Map(),
+  lastContextOpenTs: 0,
 };
 
 const colorByLabel = {
@@ -36,6 +37,220 @@ function setStatus(text, isError = false) {
   const el = document.getElementById("statusMsg");
   el.textContent = text;
   el.style.color = isError ? "#d64545" : "#334e68";
+}
+
+function debugLog(message) {
+  const el = document.getElementById("debugLog");
+  if (!el) return;
+  const stamp = new Date().toLocaleTimeString();
+  const next = `[${stamp}] ${message}`;
+  const existing = el.textContent === "No events yet." ? "" : el.textContent;
+  const lines = [next, ...existing.split("\n").filter(Boolean)].slice(0, 18);
+  el.textContent = lines.join("\n");
+}
+
+function hideUserContextMenu() {
+  const menu = document.getElementById("userContextMenu");
+  menu.classList.add("hidden");
+  menu.innerHTML = "";
+}
+
+function handleContextForData(data, viewPoint) {
+  if (!data) {
+    hideUserContextMenu();
+    return;
+  }
+  if (data.label === "User") {
+    showUserContextMenu(data, viewPoint);
+    return;
+  }
+  if (data.label === "PolicyGroup") {
+    showGroupContextMenu(data, viewPoint);
+    return;
+  }
+  hideUserContextMenu();
+}
+
+function openContextMenuFromDomEvent(evt) {
+  if (!state.graph || !state.graph.div) return;
+  evt.preventDefault();
+  evt.stopPropagation();
+
+  const rect = state.graph.div.getBoundingClientRect();
+  const viewPoint = new go.Point(evt.clientX, evt.clientY);
+  const localViewPoint = new go.Point(evt.clientX - rect.left, evt.clientY - rect.top);
+  const docPoint = state.graph.transformViewToDoc(localViewPoint);
+  const part =
+    state.graph.findPartAt(docPoint, false) ||
+    state.graph.findPartAt(docPoint, true) ||
+    state.graph.findPartAt(state.graph.lastInput.documentPoint, false) ||
+    state.graph.findPartAt(state.graph.lastInput.documentPoint, true);
+  const data = part && part.data ? part.data : null;
+  debugLog(
+    [
+      `openContextMenuFromDomEvent type=${evt.type}`,
+      `button=${evt.button ?? "na"}`,
+      `buttons=${evt.buttons ?? "na"}`,
+      `ctrl=${Boolean(evt.ctrlKey)}`,
+      `meta=${Boolean(evt.metaKey)}`,
+      `pointer=${evt.pointerType || "na"}`,
+      `client=(${evt.clientX},${evt.clientY})`,
+      `part=${data ? `${data.label}:${(data.properties && (data.properties.userId || data.properties.policyGroupId || data.properties.policyName || data.properties.tableName || data.properties.columnName || data.properties.schemaName)) || "unknown"}` : "none"}`,
+    ].join(" | ")
+  );
+  state.lastContextOpenTs = Date.now();
+  handleContextForData(data, viewPoint);
+}
+
+async function submitMembership(action, userId, groupId) {
+  const endpoint = action === "entitle" ? "/api/entitlements/assign" : "/api/entitlements/revoke";
+  await fetchJSON(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, group_id: groupId }),
+  });
+}
+
+function ctxSection(title, items, onClick, labelBuilder) {
+  const section = document.createElement("div");
+  const heading = document.createElement("div");
+  heading.className = "ctx-section-title";
+  heading.textContent = title;
+  section.appendChild(heading);
+
+  if (!items.length) {
+    const empty = document.createElement("div");
+    empty.className = "ctx-empty";
+    empty.textContent = "None";
+    section.appendChild(empty);
+    return section;
+  }
+
+  for (const item of items) {
+    const btn = document.createElement("button");
+    btn.className = "ctx-item";
+    btn.textContent = labelBuilder(item);
+    btn.addEventListener("click", async () => {
+      await onClick(item);
+    });
+    section.appendChild(btn);
+  }
+  return section;
+}
+
+async function showUserContextMenu(userNodeData, viewPoint) {
+  const userId = userNodeData?.properties?.userId;
+  if (!userId) return;
+  const menu = document.getElementById("userContextMenu");
+  menu.classList.remove("hidden");
+  menu.innerHTML = "<div class='ctx-title'>Loading group options...</div>";
+  menu.style.left = `${Math.max(8, viewPoint.x)}px`;
+  menu.style.top = `${Math.max(8, viewPoint.y)}px`;
+
+  try {
+    const options = await fetchJSON(`/api/users/${encodeURIComponent(userId)}/group-options`);
+    menu.innerHTML = "";
+    const title = document.createElement("div");
+    title.className = "ctx-title";
+    title.textContent = `User: ${userId}`;
+    menu.appendChild(title);
+    menu.appendChild(
+      ctxSection(
+        "Entitle to",
+        options.entitle_to || [],
+        async (g) => {
+          try {
+            await submitMembership("entitle", userId, g.group_id);
+            setStatus(`Entitled ${userId} to ${g.group_id}`);
+            hideUserContextMenu();
+            await loadGraph();
+            await loadSelectors();
+          } catch (err) {
+            setStatus(`Failed to entitle: ${err.message}`, true);
+          }
+        },
+        (g) => `${g.group_name || g.group_id} (${g.group_id})`
+      )
+    );
+    menu.appendChild(
+      ctxSection(
+        "Revoke from",
+        options.revoke_from || [],
+        async (g) => {
+          try {
+            await submitMembership("revoke", userId, g.group_id);
+            setStatus(`Revoked ${userId} from ${g.group_id}`);
+            hideUserContextMenu();
+            await loadGraph();
+            await loadSelectors();
+          } catch (err) {
+            setStatus(`Failed to revoke: ${err.message}`, true);
+          }
+        },
+        (g) => `${g.group_name || g.group_id} (${g.group_id})`
+      )
+    );
+  } catch (err) {
+    menu.innerHTML = `<div class='ctx-title'>Failed to load options</div><div class='ctx-empty'>${escapeHtml(String(err.message))}</div>`;
+  }
+}
+
+async function showGroupContextMenu(groupNodeData, viewPoint) {
+  const groupId = groupNodeData?.properties?.policyGroupId;
+  const groupName = groupNodeData?.properties?.policyGroupName || groupId;
+  if (!groupId) return;
+  const menu = document.getElementById("userContextMenu");
+  menu.classList.remove("hidden");
+  menu.innerHTML = "<div class='ctx-title'>Loading user options...</div>";
+  menu.style.left = `${Math.max(8, viewPoint.x)}px`;
+  menu.style.top = `${Math.max(8, viewPoint.y)}px`;
+
+  try {
+    const options = await fetchJSON(`/api/groups/${encodeURIComponent(groupId)}/user-options`);
+    menu.innerHTML = "";
+    const title = document.createElement("div");
+    title.className = "ctx-title";
+    title.textContent = `Group: ${groupName} (${groupId})`;
+    menu.appendChild(title);
+    menu.appendChild(
+      ctxSection(
+        "Entitle users",
+        options.entitle_users || [],
+        async (u) => {
+          try {
+            await submitMembership("entitle", u.user_id, groupId);
+            setStatus(`Entitled ${u.user_id} to ${groupId}`);
+            hideUserContextMenu();
+            await loadGraph();
+            await loadSelectors();
+          } catch (err) {
+            setStatus(`Failed to entitle user: ${err.message}`, true);
+          }
+        },
+        (u) => u.user_id
+      )
+    );
+    menu.appendChild(
+      ctxSection(
+        "Revoke users",
+        options.revoke_users || [],
+        async (u) => {
+          try {
+            await submitMembership("revoke", u.user_id, groupId);
+            setStatus(`Revoked ${u.user_id} from ${groupId}`);
+            hideUserContextMenu();
+            await loadGraph();
+            await loadSelectors();
+          } catch (err) {
+            setStatus(`Failed to revoke user: ${err.message}`, true);
+          }
+        },
+        (u) => u.user_id
+      )
+    );
+  } catch (err) {
+    menu.innerHTML = `<div class='ctx-title'>Failed to load options</div><div class='ctx-empty'>${escapeHtml(String(err.message))}</div>`;
+  }
 }
 
 function setSelection(title, obj) {
@@ -121,6 +336,8 @@ function initDiagram() {
     // Keep a valid layout instance but disable automatic re-layout.
     layout: $(go.ForceDirectedLayout, { isInitial: false, isOngoing: false }),
   });
+  diagram.addDiagramListener("BackgroundContextClicked", () => hideUserContextMenu());
+  diagram.addDiagramListener("BackgroundSingleClicked", () => hideUserContextMenu());
 
   diagram.nodeTemplate = $(
     go.Node,
@@ -130,6 +347,10 @@ function initDiagram() {
         if (!part.isSelected) return;
         const d = part.data;
         setSelection(`Node: ${d.label}`, d);
+      },
+      contextClick: (e, obj) => {
+        const p = e.diagram.lastInput.viewPoint;
+        handleContextForData(obj.part && obj.part.data, p);
       },
     },
     $(
@@ -180,6 +401,10 @@ function initDiagram() {
           const d = part.data;
           setSelection(`Node: ${d.label}`, d);
         },
+        contextClick: (e, obj) => {
+          const p = e.diagram.lastInput.viewPoint;
+          handleContextForData(obj.part && obj.part.data, p);
+        },
       },
       $(go.Shape, "RoundedRectangle", { fill: "#fff5f5", stroke: "#7f1d1d", strokeWidth: 1.2 }),
       $(
@@ -219,6 +444,10 @@ function initDiagram() {
           if (!part.isSelected) return;
           const d = part.data;
           setSelection(`Node: ${d.label}`, d);
+        },
+        contextClick: (e, obj) => {
+          const p = e.diagram.lastInput.viewPoint;
+          handleContextForData(obj.part && obj.part.data, p);
         },
       },
       $(go.Shape, "RoundedRectangle", {
@@ -447,12 +676,7 @@ async function applyMembership(action) {
   }
   setStatus(`${action} in progress...`);
   try {
-    const endpoint = action === "Entitle" ? "/api/entitlements/assign" : "/api/entitlements/revoke";
-    await fetchJSON(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, group_id: groupId }),
-    });
+    await submitMembership(action === "Entitle" ? "entitle" : "revoke", userId, groupId);
     setStatus(`${action} succeeded for ${userId} -> ${groupId}`);
     await loadGraph();
     await loadSelectors();
@@ -463,6 +687,55 @@ async function applyMembership(action) {
 
 window.addEventListener("DOMContentLoaded", async () => {
   initDiagram();
+  // Safari compatibility: normalize native contextmenu to our custom menu.
+  const graphDiv = document.getElementById("graphDiv");
+  const traceEvent = (name) => (evt) => {
+    debugLog(
+      [
+        `event=${name}`,
+        `button=${evt.button ?? "na"}`,
+        `buttons=${evt.buttons ?? "na"}`,
+        `ctrl=${Boolean(evt.ctrlKey)}`,
+        `meta=${Boolean(evt.metaKey)}`,
+        `pointer=${evt.pointerType || "na"}`,
+        `client=(${evt.clientX ?? "na"},${evt.clientY ?? "na"})`,
+      ].join(" | ")
+    );
+  };
+  graphDiv.addEventListener("pointerdown", traceEvent("pointerdown"), { capture: true });
+  graphDiv.addEventListener("pointerup", traceEvent("pointerup"), { capture: true });
+  graphDiv.addEventListener("mousedown", traceEvent("mousedown"), { capture: true });
+  graphDiv.addEventListener("mouseup", traceEvent("mouseup"), { capture: true });
+  graphDiv.addEventListener("click", traceEvent("click"), { capture: true });
+  graphDiv.addEventListener("auxclick", traceEvent("auxclick"), { capture: true });
+  graphDiv.addEventListener("contextmenu", openContextMenuFromDomEvent, { passive: false, capture: true });
+  document.addEventListener(
+    "contextmenu",
+    (evt) => {
+      if (graphDiv.contains(evt.target)) {
+        openContextMenuFromDomEvent(evt);
+      }
+    },
+    { passive: false, capture: true }
+  );
+  // Safari fallback: Ctrl+Click is often treated as a regular click.
+  graphDiv.addEventListener("click", (evt) => {
+    if (evt.ctrlKey) openContextMenuFromDomEvent(evt);
+  });
+  // Some Safari setups dispatch auxclick for secondary click.
+  graphDiv.addEventListener("auxclick", (evt) => {
+    if (evt.button === 2) openContextMenuFromDomEvent(evt);
+  });
+  graphDiv.addEventListener("mousedown", (evt) => {
+    if (evt.button === 2 || evt.ctrlKey) {
+      openContextMenuFromDomEvent(evt);
+    }
+  });
+  document.addEventListener("click", (evt) => {
+    if (Date.now() - state.lastContextOpenTs < 250) return;
+    const menu = document.getElementById("userContextMenu");
+    if (!menu.contains(evt.target)) hideUserContextMenu();
+  });
   document.getElementById("assignBtn").addEventListener("click", () => applyMembership("Entitle"));
   document.getElementById("revokeBtn").addEventListener("click", () => applyMembership("Revoke"));
   document.getElementById("refreshBtn").addEventListener("click", loadGraph);

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Entitlement Graph Explorer</title>
+  <title>Onto2AI Entitlement Manager</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
@@ -41,6 +41,10 @@
         <span>Database</span>
       </div>
       <div id="graphDiv"></div>
+      <div id="debugPanel" class="debug-panel">
+        <div class="debug-title">Safari Context Debug</div>
+        <div id="debugLog" class="debug-log">No events yet.</div>
+      </div>
     </main>
 
     <aside class="panel detail">
@@ -56,6 +60,7 @@
       </table>
     </aside>
   </div>
+  <div id="userContextMenu" class="ctx-menu hidden"></div>
 
   <script src="https://unpkg.com/gojs/release/go.js"></script>
   <script src="/static/app.js"></script>
