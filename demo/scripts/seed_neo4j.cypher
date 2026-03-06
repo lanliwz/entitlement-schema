@@ -59,7 +59,8 @@ WITH
     'user-alice',
     'user-bob',
     'user-carol',
-    'user-sam'
+    'user-sam',
+    'user-tom'
   ] AS users,
   [
     {userId:'user-alice', groupId:'all_employees_pg'},
@@ -69,7 +70,10 @@ WITH
     {userId:'user-bob',   groupId:'client_support_pg'},
 
     {userId:'user-carol', groupId:'all_employees_pg'},
-    {userId:'user-carol', groupId:'it_pg'}
+    {userId:'user-carol', groupId:'it_pg'},
+
+    {userId:'user-tom',   groupId:'all_employees_pg'},
+    {userId:'user-tom',   groupId:'hr_pg'}
   ] AS memberships
 
 // Schema

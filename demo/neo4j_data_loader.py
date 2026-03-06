@@ -7,9 +7,9 @@ import json
 config = get_config()
 
 
-def load_cypher_file(uri, user, password, filepath):
+def load_cypher_file(uri, user, password, database, filepath):
     driver = GraphDatabase.driver(uri, auth=(user, password))
-    with driver.session() as session:
+    with driver.session(database=database) as session:
         with open(filepath, "r", encoding="utf-8") as f:
             cypher_script = f.read()
 
@@ -52,6 +52,7 @@ if __name__ == "__main__":
         uri=neo4j_bolt_url,
         user=username,
         password=password,
+        database=database,
         filepath=cypher_file
     )
     asyncio.run(notify_schema_change_via_ws())

@@ -24,7 +24,30 @@ def get_sql(text: str) -> str:
     match = re.search(r"```sql(.*?)```", text, re.DOTALL | re.IGNORECASE)
     return match.group(1).strip() if match else ""
 
-def llm_rewrite_all(original_sql, parsed_tables, entitlements_by_table):
+
+def _extract_except_group(policy_definition: str) -> str | None:
+    if not policy_definition:
+        return None
+    match = re.search(r"except\s+members\s+of\s+(.+?)(?:[.;]|$)", policy_definition, re.IGNORECASE)
+    return match.group(1).strip() if match else None
+
+
+def _effective_entitlements_for_user(
+    entitlements_by_table: Dict[str, List[Dict[str, Any]]], user_groups: List[str]
+) -> Dict[str, List[Dict[str, Any]]]:
+    group_names = {g.strip().lower() for g in user_groups if g}
+    filtered: Dict[str, List[Dict[str, Any]]] = {}
+    for table_key, entitlements in entitlements_by_table.items():
+        next_entitlements = []
+        for entitlement in entitlements:
+            exception_group = _extract_except_group(entitlement.get("policyDefinition", ""))
+            if exception_group and exception_group.lower() in group_names:
+                continue
+            next_entitlements.append(entitlement)
+        filtered[table_key] = next_entitlements
+    return filtered
+
+def llm_rewrite_all(original_sql, parsed_tables, entitlements_by_table, user_groups=None, row_governed_tables=None):
     REWRITER_SYSTEM_PROMPT = """You are a precise SQL rewriter that applies entitlement rules for ALL tables in the query.
     Input contains: original SQL, parsed tables (with aliases), and entitlements_by_table keyed by "schema.table".
     Rules:
@@ -34,21 +57,30 @@ def llm_rewrite_all(original_sql, parsed_tables, entitlements_by_table):
     - Preserve joins, aliases, projections, order, limits.
     Return only the final SQL, no commentary.
     """
+    effective_entitlements = _effective_entitlements_for_user(entitlements_by_table, user_groups or [])
     # Optional LLM rewriter (falls back to rule-based if no key)
     try:
         from langchain_core.messages import HumanMessage, SystemMessage
         from langchain_openai import ChatOpenAI
-        HAVE_LLM = bool(os.getenv("OPENAI_API_KEY"))
+        HAVE_LLM = bool(os.getenv("OPENAI_API_KEY")) and os.getenv("ENTITLEMENT_USE_LLM_REWRITE") == "1"
     except Exception:
         HAVE_LLM = False
     if not HAVE_LLM:
-        return rule_based_rewrite_all(original_sql, parsed_tables, entitlements_by_table)
+        return rule_based_rewrite_all(
+            original_sql,
+            parsed_tables,
+            effective_entitlements,
+            user_groups or [],
+            row_governed_tables or [],
+        )
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     payload = {
         "original_sql": original_sql,
         "tables": parsed_tables,
-        "entitlements_by_table": entitlements_by_table,  # string-keyed dict
+        "entitlements_by_table": effective_entitlements,  # string-keyed dict
+        "user_groups": user_groups or [],
+        "row_governed_tables": row_governed_tables or [],
     }
     msg = llm.invoke(
         [
@@ -74,8 +106,12 @@ def fetch_all_entitlements_for_tables(user_id: str, parsed_tables: List[Dict[str
 
 def rule_based_rewrite_all(original_sql: str,
                            parsed_tables: List[Dict[str, str]],
-                           entitlements_by_table: Dict[str, List[Dict[str, Any]]]) -> str:
+                           entitlements_by_table: Dict[str, List[Dict[str, Any]]],
+                           user_groups: List[str] | None = None,
+                           row_governed_tables: List[str] | None = None) -> str:
     expr = parse_one(original_sql, read="mysql")
+    effective_entitlements = _effective_entitlements_for_user(entitlements_by_table, user_groups or [])
+    governed_tables = set(row_governed_tables or [])
 
     # build alias map: (schema, table) -> alias (internal tuples ok, not stored in state)
     alias_map = {}
@@ -88,24 +124,38 @@ def rule_based_rewrite_all(original_sql: str,
             alias_map[(schema, table)] = alias
 
     # ROW filters
-    row_preds = []
-    for key, ents in entitlements_by_table.items():
+    row_values: Dict[Tuple[str | None, str, str], List[str]] = {}
+    for key, ents in effective_entitlements.items():
         # key format "schema.table"
         schema, table = key.split(".", 1)
         schema = schema or None
-        alias = alias_map.get((schema, table))
         for e in ents:
-            if e.get("ruleType") == "ROW" and e.get("columnName") == "dept_name":
+            column_name = e.get("columnName")
+            if e.get("ruleType") == "ROW" and column_name:
                 definition = (e.get("policyDefinition") or e.get("definition") or "").strip()
-                if "dept_name" in definition and "=" in definition:
+                if column_name in definition and "=" in definition:
                     rhs = definition.split("=", 1)[1].strip().strip(";")
-                    if not rhs.startswith(("'", '"')):
-                        rhs = f"'{rhs}'"
-                    col = E.Column(this=E.Identifier(this="dept_name"))
-                    if alias:
-                        col = E.Column(this=E.Identifier(this="dept_name"), table=E.Identifier(this=alias))
-                    pred = E.EQ(this=col, expression=E.Literal.string(rhs.strip("'").strip('"')))
-                    row_preds.append(pred)
+                    value = rhs.strip("'").strip('"')
+                    if value:
+                        bucket_key = (schema, table, column_name)
+                        row_values.setdefault(bucket_key, [])
+                        if value not in row_values[bucket_key]:
+                            row_values[bucket_key].append(value)
+
+    row_preds = []
+    for (schema, table, column_name), values in row_values.items():
+        alias = alias_map.get((schema, table))
+        col = E.Column(this=E.Identifier(this=column_name))
+        if alias:
+            col = E.Column(this=E.Identifier(this=column_name), table=E.Identifier(this=alias))
+        if len(values) == 1:
+            pred = E.EQ(this=col, expression=E.Literal.string(values[0]))
+        else:
+            pred = E.In(
+                this=col,
+                expressions=[E.Literal.string(value) for value in values],
+            )
+        row_preds.append(pred)
 
     if row_preds:
         combined = row_preds[0]
@@ -117,10 +167,35 @@ def rule_based_rewrite_all(original_sql: str,
         else:
             expr.set("where", E.Where(this=combined))
 
+    denied_tables = []
+    for parsed in parsed_tables:
+        schema = parsed.get("schema") or "bank"
+        table = parsed.get("table")
+        if not table:
+            continue
+        table_key = f"{schema}.{table}"
+        if table_key not in governed_tables:
+            continue
+        effective_rows = [
+            entitlement
+            for entitlement in effective_entitlements.get(table_key, [])
+            if entitlement.get("ruleType") == "ROW"
+        ]
+        if not effective_rows:
+            denied_tables.append(table_key)
+
+    if denied_tables:
+        deny_pred = E.EQ(this=E.Literal.number("1"), expression=E.Literal.number("0"))
+        where = expr.args.get("where")
+        if where and where.this:
+            where.this = E.And(this=where.this, expression=deny_pred)
+        else:
+            expr.set("where", E.Where(this=deny_pred))
+
     # MASK salary
     mask_needed = False
     emp_alias = None
-    for key, ents in entitlements_by_table.items():
+    for key, ents in effective_entitlements.items():
         _, table = key.split(".", 1)
         if table == "employee" and any(e.get("ruleType") == "MASK" and e.get("columnName") == "salary" for e in ents):
             mask_needed = True
@@ -152,6 +227,8 @@ class AppState(TypedDict, total=False):
     input_sql: str
     parsed_tables: List[Dict[str, str]]
     entitlements_by_table: Dict[str, List[Dict[str, Any]]]  # <-- string keys
+    user_groups: List[str]
+    row_governed_tables: List[str]
     rewritten_sql: str
     rows: List[Dict[str, Any]]
     messages: List[str]
@@ -231,9 +308,21 @@ def parse_node(state: AppState) -> AppState:
 
 def entitlements_node(state: AppState) -> AppState:
     _append_msg(state, "Fetching entitlements for all tables.")
-    ent_by_tbl = fetch_all_entitlements_for_tables(state["user_id"], state["parsed_tables"])
+    repo = EntitlementRepository()
+    try:
+        ent_by_tbl = fetch_all_entitlements_for_tables(state["user_id"], state["parsed_tables"])
+        user_groups = repo.fetch_user_group_names(state["user_id"])
+        row_governed_tables = repo.fetch_row_governed_tables(state["parsed_tables"])
+    finally:
+        repo.close()
     state["entitlements_by_table"] = ent_by_tbl
+    state["user_groups"] = user_groups
+    state["row_governed_tables"] = row_governed_tables
     _append_msg(state, f"Fetched entitlements for {len(ent_by_tbl)} table(s).")
+    if user_groups:
+        _append_msg(state, f"User groups: {user_groups}")
+    if row_governed_tables:
+        _append_msg(state, f"Row-governed tables: {row_governed_tables}")
     return state
 
 def rewrite_node(state: AppState) -> AppState:
@@ -241,7 +330,9 @@ def rewrite_node(state: AppState) -> AppState:
     rewritten = llm_rewrite_all(
         state["input_sql"],
         state.get("parsed_tables", []),
-        state.get("entitlements_by_table", {})
+        state.get("entitlements_by_table", {}),
+        state.get("user_groups", []),
+        state.get("row_governed_tables", []),
     )
     state["rewritten_sql"] = rewritten
     return state

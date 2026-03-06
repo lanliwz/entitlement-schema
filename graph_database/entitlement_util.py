@@ -14,14 +14,12 @@ class EntitlementRepository:
     username = config['neo4j']["USERNAME"]
     password = config['neo4j']["PASSWORD"]
     database = config['neo4j']["DATABASE"]
-    print(database)
 
     # 1. Create driver connection to Neo4j server
     # Adjust host/port and credentials
     driver = GraphDatabase.driver(
         neo4j_bolt_url,
         auth=(username, password),
-        database=database
     )
 
 
@@ -48,7 +46,7 @@ class EntitlementRepository:
         ORDER BY columnName, ruleType
         """
 
-        with self.driver.session() as session:
+        with self.driver.session(database=self.database) as session:
             results = session.run(
                 query,
                 userId=user_id,
@@ -56,6 +54,41 @@ class EntitlementRepository:
                 tableName=table_name
             )
             return [dict(r) for r in results]
+
+    def fetch_user_group_names(self, user_id: str) -> List[str]:
+        query = """
+        MATCH (:User {userId: $userId})-[:memberOf]->(pg:PolicyGroup)
+        RETURN pg.policyGroupName AS policyGroupName, pg.policyGroupId AS policyGroupId
+        ORDER BY policyGroupName, policyGroupId
+        """
+        with self.driver.session(database=self.database) as session:
+            results = session.run(query, userId=user_id)
+            names = []
+            for row in results:
+                if row["policyGroupName"]:
+                    names.append(row["policyGroupName"])
+                elif row["policyGroupId"]:
+                    names.append(row["policyGroupId"])
+            return names
+
+    def fetch_row_governed_tables(self, parsed_tables: List[Dict[str, str]]) -> List[str]:
+        if not parsed_tables:
+            return []
+        pairs = [
+            {"schemaName": t.get("schema") or "bank", "tableName": t.get("table")}
+            for t in parsed_tables
+            if t.get("table")
+        ]
+        query = """
+        UNWIND $pairs AS pair
+        MATCH (t:Table {tableName: pair.tableName})-[:belongsToSchema]->(s:Schema {schemaName: pair.schemaName})
+        MATCH (c:Column)-[:belongsToTable]->(t)
+        MATCH (:Policy)-[:hasRowRule]->(c)
+        RETURN DISTINCT s.schemaName AS schemaName, t.tableName AS tableName
+        """
+        with self.driver.session(database=self.database) as session:
+            results = session.run(query, pairs=pairs)
+            return [f"{row['schemaName']}.{row['tableName']}" for row in results]
 
     def add_mask_policy(
         self,
@@ -102,7 +135,7 @@ class EntitlementRepository:
         RETURN pg.policyGroupId AS policyGroupId, pg.policyGroupName AS policyGroupName
         """
 
-        with self.driver.session() as session:
+        with self.driver.session(database=self.database) as session:
             record = session.run(
                 cypher_core,
                 schemaId=schema_id,
@@ -150,7 +183,7 @@ class EntitlementRepository:
                pg.policyGroupId AS policyGroupId,
                pg.policyGroupName AS policyGroupName
         """
-        with self.driver.session() as session:
+        with self.driver.session(database=self.database) as session:
             rec = session.run(
                 cypher,
                 userId=user_id,
@@ -216,7 +249,7 @@ class EntitlementRepository:
                 "policyId": policy_id,
             }
 
-        with self.driver.session() as session:
+        with self.driver.session(database=self.database) as session:
             rec = session.run(cypher, **params).single()
             # If user tried to MATCH a non-existent policy, rec will be None
             return dict(rec) if rec else {}
@@ -270,7 +303,7 @@ class EntitlementRepository:
         RETURN pg.policyGroupId AS policyGroupId, pg.policyGroupName AS policyGroupName
         """
 
-        with self.driver.session() as session:
+        with self.driver.session(database=self.database) as session:
             record = session.run(
                 cypher_core,
                 schemaId=schema_id,
