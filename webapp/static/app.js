@@ -8,6 +8,46 @@ const state = {
   lastContextOpenTs: 0,
 };
 
+const laneMenuConfig = {
+  left: {
+    title: "User lane",
+    actions: [
+      { verb: "Add", entityType: "user", label: "Add user" },
+      { verb: "Delete", entityType: "user", label: "Delete user" },
+    ],
+  },
+  group: {
+    title: "Group lane",
+    actions: [
+      { verb: "Add", entityType: "group", label: "Add group" },
+      { verb: "Delete", entityType: "group", label: "Delete group" },
+    ],
+  },
+  policy: {
+    title: "Policy lane",
+    actions: [
+      { verb: "Add", entityType: "policy", label: "Add policy" },
+      { verb: "Delete", entityType: "policy", label: "Delete policy" },
+    ],
+  },
+  table: {
+    title: "Table / Column lane",
+    actions: [
+      { verb: "Add", entityType: "table", label: "Add table" },
+      { verb: "Delete", entityType: "table", label: "Delete table" },
+      { verb: "Add", entityType: "column", label: "Add column" },
+      { verb: "Delete", entityType: "column", label: "Delete column" },
+    ],
+  },
+  database: {
+    title: "Database lane",
+    actions: [
+      { verb: "Add", entityType: "database", label: "Add database" },
+      { verb: "Delete", entityType: "database", label: "Delete database" },
+    ],
+  },
+};
+
 const colorByLabel = {
   User: "#5dade2",
   PolicyGroup: "#a4b0be",
@@ -55,11 +95,18 @@ function hideUserContextMenu() {
   menu.innerHTML = "";
 }
 
+function hideLaneContextMenu() {
+  const menu = document.getElementById("laneContextMenu");
+  menu.classList.add("hidden");
+  menu.innerHTML = "";
+}
+
 function handleContextForData(data, viewPoint) {
   if (!data) {
     hideUserContextMenu();
     return;
   }
+  hideLaneContextMenu();
   if (data.label === "User") {
     showUserContextMenu(data, viewPoint);
     return;
@@ -69,6 +116,19 @@ function handleContextForData(data, viewPoint) {
     return;
   }
   hideUserContextMenu();
+}
+
+async function submitEntityMutation(action, entityType, entityId = "", properties = {}) {
+  const endpoint = action === "create" ? "/api/entities/create" : "/api/entities/delete";
+  await fetchJSON(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      entity_type: entityType,
+      entity_id: entityId,
+      properties,
+    }),
+  });
 }
 
 function openContextMenuFromDomEvent(evt) {
@@ -146,6 +206,202 @@ function ctxSection(title, items, onClick, labelBuilder) {
     section.appendChild(btn);
   }
   return section;
+}
+
+function openLaneContextMenu(lane, anchorEl) {
+  const config = laneMenuConfig[lane];
+  if (!config || !anchorEl) return;
+  hideUserContextMenu();
+
+  const rect = anchorEl.getBoundingClientRect();
+  const menu = document.getElementById("laneContextMenu");
+  menu.classList.remove("hidden");
+  menu.innerHTML = "";
+  menu.style.left = `${Math.max(8, rect.left)}px`;
+  menu.style.top = `${Math.max(8, rect.bottom + 6)}px`;
+
+  const title = document.createElement("div");
+  title.className = "ctx-title";
+  title.textContent = config.title;
+  menu.appendChild(title);
+
+  for (const action of config.actions) {
+    const btn = document.createElement("button");
+    btn.className = "ctx-item";
+    btn.textContent = action.label;
+    btn.addEventListener("click", async () => {
+      await handleLaneEntityAction({ ...action, lane });
+    });
+    menu.appendChild(btn);
+  }
+}
+
+function setLaneMenuPosition(menu, anchorEl) {
+  const rect = anchorEl.getBoundingClientRect();
+  menu.style.left = `${Math.max(8, rect.left)}px`;
+  menu.style.top = `${Math.max(8, rect.bottom + 6)}px`;
+}
+
+function formatEntityChoice(entity) {
+  const props = entity.properties || {};
+  const primary =
+    entity.display_name || props.policyName || props.policyGroupName || props.tableName || props.columnName || props.schemaName || entity.entity_id;
+  return primary === entity.entity_id ? entity.entity_id : `${primary} (${entity.entity_id})`;
+}
+
+function laneMenuBackButton(onClick) {
+  const btn = document.createElement("button");
+  btn.className = "ctx-item ctx-back";
+  btn.textContent = "Back";
+  btn.addEventListener("click", onClick);
+  return btn;
+}
+
+function laneMenuActionButton(label, onClick, className = "") {
+  const btn = document.createElement("button");
+  btn.className = className ? `ctx-item ${className}` : "ctx-item";
+  btn.textContent = label;
+  btn.addEventListener("click", onClick);
+  return btn;
+}
+
+async function showAddEntityForm(action, anchorEl) {
+  const menu = document.getElementById("laneContextMenu");
+  const meta = await fetchJSON(`/api/entities/${encodeURIComponent(action.entityType)}/meta`);
+  menu.innerHTML = "";
+  setLaneMenuPosition(menu, anchorEl);
+
+  const title = document.createElement("div");
+  title.className = "ctx-title";
+  title.textContent = action.label;
+  menu.appendChild(title);
+  menu.appendChild(laneMenuBackButton(() => openLaneContextMenu(anchorEl.dataset.lane, anchorEl)));
+
+  const form = document.createElement("form");
+  form.className = "ctx-form";
+  const requiredFields = (meta.fields || []).filter((field) => field.required);
+  const optionalFields = (meta.fields || []).filter((field) => !field.required);
+
+  const appendFieldGroup = (titleText, fields) => {
+    if (!fields.length) return;
+    const titleEl = document.createElement("div");
+    titleEl.className = "ctx-section-title";
+    titleEl.textContent = titleText;
+    form.appendChild(titleEl);
+    for (const field of fields) {
+      const label = document.createElement("label");
+      label.className = "ctx-form-label";
+      label.textContent = field.label;
+      const input = document.createElement("input");
+      input.className = "ctx-form-input";
+      input.name = field.name;
+      input.required = Boolean(field.required);
+      input.placeholder = field.name;
+      label.appendChild(input);
+      form.appendChild(label);
+    }
+  };
+
+  appendFieldGroup("Required properties", requiredFields);
+  appendFieldGroup("Optional properties", optionalFields);
+
+  const submit = laneMenuActionButton("Create", async (evt) => {
+    evt.preventDefault();
+    const data = new FormData(form);
+    const properties = Object.fromEntries(
+      [...data.entries()].map(([k, v]) => [k, String(v).trim()]).filter(([, v]) => v)
+    );
+    const missing = (meta.fields || []).filter((f) => f.required && !properties[f.name]);
+    if (missing.length) {
+      setStatus(`Missing required field: ${missing[0].label}`, true);
+      return;
+    }
+    try {
+      await submitEntityMutation("create", action.entityType, properties[meta.id_field], properties);
+      setStatus(`Added ${action.entityType} ${properties[meta.id_field]}`);
+      hideLaneContextMenu();
+      await loadGraph();
+      await loadSelectors();
+    } catch (err) {
+      setStatus(`Failed to add ${action.entityType}: ${err.message}`, true);
+    }
+  }, "ctx-primary");
+  form.appendChild(submit);
+  menu.appendChild(form);
+}
+
+async function showDeleteEntityChooser(action, anchorEl) {
+  const menu = document.getElementById("laneContextMenu");
+  const entities = await fetchJSON(`/api/entities/${encodeURIComponent(action.entityType)}`);
+  menu.innerHTML = "";
+  setLaneMenuPosition(menu, anchorEl);
+
+  const title = document.createElement("div");
+  title.className = "ctx-title";
+  title.textContent = action.label;
+  menu.appendChild(title);
+  menu.appendChild(laneMenuBackButton(() => openLaneContextMenu(anchorEl.dataset.lane, anchorEl)));
+
+  if (!entities.length) {
+    const empty = document.createElement("div");
+    empty.className = "ctx-empty";
+    empty.textContent = "No entities found.";
+    menu.appendChild(empty);
+    return;
+  }
+
+  const select = document.createElement("select");
+  select.className = "ctx-select";
+  for (const entity of entities) {
+    const opt = document.createElement("option");
+    opt.value = entity.entity_id;
+    opt.textContent = formatEntityChoice(entity);
+    select.appendChild(opt);
+  }
+  menu.appendChild(select);
+
+  const confirmWrap = document.createElement("div");
+  confirmWrap.className = "ctx-confirm hidden";
+  menu.appendChild(confirmWrap);
+
+  const chooseBtn = laneMenuActionButton("Continue", () => {
+    const entity = entities.find((item) => item.entity_id === select.value);
+    if (!entity) return;
+    confirmWrap.classList.remove("hidden");
+    confirmWrap.innerHTML = "";
+    const text = document.createElement("div");
+    text.className = "ctx-empty";
+    text.textContent = `Delete ${formatEntityChoice(entity)}?`;
+    confirmWrap.appendChild(text);
+    confirmWrap.appendChild(
+      laneMenuActionButton("Confirm delete", async () => {
+        try {
+          await submitEntityMutation("delete", action.entityType, entity.entity_id);
+          setStatus(`Deleted ${action.entityType} ${entity.entity_id}`);
+          hideLaneContextMenu();
+          await loadGraph();
+          await loadSelectors();
+        } catch (err) {
+          setStatus(`Failed to delete ${action.entityType}: ${err.message}`, true);
+        }
+      }, "ctx-danger")
+    );
+  }, "ctx-primary");
+  menu.appendChild(chooseBtn);
+}
+
+async function handleLaneEntityAction(action) {
+  const anchorEl = document.querySelector(`.lane-header[data-lane="${action.lane}"]`);
+  if (!anchorEl) return;
+  try {
+    if (action.verb === "Add") {
+      await showAddEntityForm(action, anchorEl);
+      return;
+    }
+    await showDeleteEntityChooser(action, anchorEl);
+  } catch (err) {
+    setStatus(`Failed to load ${action.entityType} action: ${err.message}`, true);
+  }
 }
 
 async function showUserContextMenu(userNodeData, viewPoint) {
@@ -743,6 +999,16 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (Date.now() - state.lastContextOpenTs < 250) return;
     const menu = document.getElementById("userContextMenu");
     if (!menu.contains(evt.target)) hideUserContextMenu();
+    const laneMenu = document.getElementById("laneContextMenu");
+    if (!laneMenu.contains(evt.target)) hideLaneContextMenu();
+  });
+  document.querySelectorAll(".lane-header").forEach((el) => {
+    el.addEventListener("click", (evt) => {
+      evt.preventDefault();
+      evt.stopPropagation();
+      debugLog(`lane-header click lane=${el.dataset.lane} client=(${evt.clientX},${evt.clientY})`);
+      openLaneContextMenu(el.dataset.lane, el);
+    });
   });
   document.getElementById("assignBtn").addEventListener("click", () => applyMembership("Entitle"));
   document.getElementById("revokeBtn").addEventListener("click", () => applyMembership("Revoke"));

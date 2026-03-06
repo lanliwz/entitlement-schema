@@ -29,6 +29,12 @@ class GroupPolicyRequest(BaseModel):
     policy_id: str
 
 
+class EntityMutationRequest(BaseModel):
+    entity_type: str
+    entity_id: str | None = None
+    properties: Dict[str, Any] | None = None
+
+
 def _neo4j_driver():
     cfg = get_config()["neo4j"]
     return GraphDatabase.driver(
@@ -37,13 +43,88 @@ def _neo4j_driver():
     ), cfg["DATABASE"]
 
 
+ENTITY_CONFIG = {
+    "user": {
+        "label": "User",
+        "id_field": "userId",
+        "name_field": None,
+        "fields": [
+            {"name": "userId", "label": "User ID", "required": True},
+        ],
+    },
+    "group": {
+        "label": "PolicyGroup",
+        "id_field": "policyGroupId",
+        "name_field": "policyGroupName",
+        "fields": [
+            {"name": "policyGroupId", "label": "Group ID", "required": True},
+            {"name": "policyGroupName", "label": "Group Name", "required": False},
+        ],
+    },
+    "policy": {
+        "label": "Policy",
+        "id_field": "policyId",
+        "name_field": "policyName",
+        "fields": [
+            {"name": "policyId", "label": "Policy ID", "required": True},
+            {"name": "policyName", "label": "Policy Name", "required": False},
+            {"name": "definition", "label": "Definition", "required": False},
+        ],
+    },
+    "table": {
+        "label": "Table",
+        "id_field": "tableId",
+        "name_field": "tableName",
+        "fields": [
+            {"name": "tableId", "label": "Table ID", "required": True},
+            {"name": "tableName", "label": "Table Name", "required": False},
+        ],
+    },
+    "column": {
+        "label": "Column",
+        "id_field": "columnId",
+        "name_field": "columnName",
+        "fields": [
+            {"name": "columnId", "label": "Column ID", "required": True},
+            {"name": "columnName", "label": "Column Name", "required": False},
+        ],
+    },
+    "database": {
+        "label": "Schema",
+        "id_field": "schemaId",
+        "name_field": "schemaName",
+        "fields": [
+            {"name": "schemaId", "label": "Database ID", "required": True},
+            {"name": "schemaName", "label": "Database Name", "required": False},
+        ],
+    },
+}
+
+
+def _entity_config(entity_type: str) -> Dict[str, str | None]:
+    config = ENTITY_CONFIG.get(entity_type)
+    if not config:
+        raise HTTPException(status_code=400, detail=f"Unsupported entity type: {entity_type}")
+    return config
+
+
 def _graph_payload(limit: int = 1500) -> Dict[str, Any]:
     driver, database = _neo4j_driver()
     labels = ["User", "PolicyGroup", "Policy", "Schema", "Table", "Column"]
     rel_types = ["memberOf", "includesPolicy", "hasRowRule", "hasColumnRule", "belongsToTable", "belongsToSchema"]
     try:
         with driver.session(database=database) as session:
-            rows = session.run(
+            node_rows = session.run(
+                """
+                MATCH (n)
+                WHERE any(l IN labels(n) WHERE l IN $labels)
+                RETURN n
+                LIMIT $limit
+                """,
+                labels=labels,
+                limit=limit,
+            )
+            link_rows = session.run(
                 """
                 MATCH (a)-[r]->(b)
                 WHERE any(l IN labels(a) WHERE l IN $labels)
@@ -61,7 +142,19 @@ def _graph_payload(limit: int = 1500) -> Dict[str, Any]:
             links: List[Dict[str, Any]] = []
             rel_seen = set()
 
-            for row in rows:
+            for row in node_rows:
+                n = row["n"]
+                node_id = n.element_id
+                if node_id not in node_map:
+                    n_labels = list(n.labels)
+                    node_map[node_id] = {
+                        "key": node_id,
+                        "label": n_labels[0] if n_labels else "Node",
+                        "labels": n_labels,
+                        "properties": dict(n.items()),
+                    }
+
+            for row in link_rows:
                 a = row["a"]
                 b = row["b"]
                 r = row["r"]
@@ -98,6 +191,109 @@ def _graph_payload(limit: int = 1500) -> Dict[str, Any]:
                     )
 
             return {"nodes": list(node_map.values()), "links": links}
+    finally:
+        driver.close()
+
+
+@app.post("/api/entities/create")
+def create_entity(req: EntityMutationRequest):
+    config = _entity_config(req.entity_type)
+    props = {k: v for k, v in (req.properties or {}).items() if isinstance(v, str) and v.strip()}
+    entity_id = (req.entity_id or props.get(config["id_field"]) or "").strip()
+    if not entity_id:
+        raise HTTPException(status_code=400, detail="entity_id is required")
+
+    driver, database = _neo4j_driver()
+    try:
+        with driver.session(database=database) as session:
+            props[config["id_field"]] = entity_id
+
+            assignments = ", ".join(f"n.{key} = ${key}" for key in props)
+            session.run(
+                f"""
+                MERGE (n:{config["label"]} {{{config["id_field"]}: ${config["id_field"]}}})
+                SET {assignments}
+                """,
+                **props,
+            ).consume()
+
+            return {"ok": True, "action": "create", "entity_type": req.entity_type, "entity_id": entity_id}
+    finally:
+        driver.close()
+
+
+@app.post("/api/entities/delete")
+def delete_entity(req: EntityMutationRequest):
+    config = _entity_config(req.entity_type)
+    entity_id = (req.entity_id or "").strip()
+    if not entity_id:
+        raise HTTPException(status_code=400, detail="entity_id is required")
+
+    driver, database = _neo4j_driver()
+    try:
+        with driver.session(database=database) as session:
+            summary = session.run(
+                f"""
+                MATCH (n:{config["label"]} {{{config["id_field"]}: $entity_id}})
+                DETACH DELETE n
+                RETURN count(n) AS deleted
+                """,
+                entity_id=entity_id,
+            ).single()
+            deleted = int(summary["deleted"]) if summary and summary["deleted"] is not None else 0
+            return {
+                "ok": True,
+                "action": "delete",
+                "entity_type": req.entity_type,
+                "entity_id": entity_id,
+                "deleted": deleted,
+            }
+    finally:
+        driver.close()
+
+
+@app.get("/api/entities/{entity_type}/meta")
+def get_entity_meta(entity_type: str):
+    config = _entity_config(entity_type)
+    return {
+        "entity_type": entity_type,
+        "label": config["label"],
+        "id_field": config["id_field"],
+        "name_field": config["name_field"],
+        "fields": config["fields"],
+    }
+
+
+@app.get("/api/entities/{entity_type}")
+def list_entities(entity_type: str):
+    config = _entity_config(entity_type)
+    id_field = config["id_field"]
+    name_field = config["name_field"]
+
+    driver, database = _neo4j_driver()
+    try:
+        with driver.session(database=database) as session:
+            return_fields = [f"n.{id_field} AS entity_id"]
+            if name_field:
+                return_fields.append(f"n.{name_field} AS display_name")
+            return_fields.append("properties(n) AS properties")
+            order_field = name_field or id_field
+            rows = session.run(
+                f"""
+                MATCH (n:{config["label"]})
+                RETURN {", ".join(return_fields)}
+                ORDER BY n.{order_field}, n.{id_field}
+                """
+            )
+            return [
+                {
+                    "entity_id": r["entity_id"],
+                    "display_name": r.get("display_name"),
+                    "properties": r["properties"],
+                }
+                for r in rows
+                if r["entity_id"]
+            ]
     finally:
         driver.close()
 

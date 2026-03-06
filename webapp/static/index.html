@@ -34,11 +34,11 @@
 
     <main class="graph-wrap">
       <div class="lane-labels">
-        <span>User</span>
-        <span>Group</span>
-        <span>Policy</span>
-        <span>Table / Column</span>
-        <span>Database</span>
+        <button class="lane-header" data-lane="left">User</button>
+        <button class="lane-header" data-lane="group">Group</button>
+        <button class="lane-header" data-lane="policy">Policy</button>
+        <button class="lane-header" data-lane="table">Table / Column</button>
+        <button class="lane-header" data-lane="database">Database</button>
       </div>
       <div id="graphDiv"></div>
       <div id="debugPanel" class="debug-panel">
@@ -61,6 +61,7 @@
     </aside>
   </div>
   <div id="userContextMenu" class="ctx-menu hidden"></div>
+  <div id="laneContextMenu" class="ctx-menu hidden"></div>
 
   <script src="https://unpkg.com/gojs/release/go.js"></script>
   <script src="/static/app.js"></script>
