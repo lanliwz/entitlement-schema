@@ -1,0 +1,106 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="170" y1="110" x2="1450" y2="820" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="0.55" stop-color="#0B3A78"/>
+      <stop offset="1" stop-color="#0EA5A4"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#2DD4BF"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" rx="36" fill="url(#bg)"/>
+
+  <circle cx="1340" cy="126" r="150" fill="#38BDF8" fill-opacity="0.16" filter="url(#soft)"/>
+  <circle cx="1210" cy="730" r="220" fill="#14B8A6" fill-opacity="0.14" filter="url(#soft)"/>
+  <circle cx="320" cy="170" r="180" fill="#2563EB" fill-opacity="0.14" filter="url(#soft)"/>
+
+  <rect x="72" y="72" width="1456" height="756" rx="30" fill="#081121" fill-opacity="0.24" stroke="#FFFFFF" stroke-opacity="0.12"/>
+
+  <g opacity="0.22">
+    <text x="922" y="176" fill="#E2E8F0" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="1.5">DISTRIBUTED ENTERPRISE SYSTEMS</text>
+
+    <rect x="952" y="214" width="194" height="108" rx="20" fill="url(#card)" stroke="#93C5FD" stroke-opacity="0.24"/>
+    <text x="995" y="252" fill="#E0F2FE" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700">Client Master</text>
+    <text x="984" y="283" fill="#BFDBFE" font-family="Helvetica, Arial, sans-serif" font-size="17">Authoritative source</text>
+
+    <rect x="1192" y="214" width="160" height="108" rx="20" fill="url(#card)" stroke="#93C5FD" stroke-opacity="0.24"/>
+    <text x="1245" y="252" fill="#E0F2FE" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700">BI</text>
+    <text x="1219" y="283" fill="#BFDBFE" font-family="Helvetica, Arial, sans-serif" font-size="17">Analytics</text>
+
+    <rect x="1378" y="214" width="126" height="108" rx="20" fill="url(#card)" stroke="#93C5FD" stroke-opacity="0.24"/>
+    <text x="1400" y="252" fill="#E0F2FE" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700">Billing</text>
+    <text x="1402" y="283" fill="#BFDBFE" font-family="Helvetica, Arial, sans-serif" font-size="17">Payments</text>
+
+    <rect x="1086" y="374" width="156" height="108" rx="20" fill="url(#card)" stroke="#5EEAD4" stroke-opacity="0.24"/>
+    <text x="1136" y="412" fill="#ECFEFF" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700">Tax</text>
+    <text x="1116" y="443" fill="#CCFBF1" font-family="Helvetica, Arial, sans-serif" font-size="17">Regulatory use</text>
+
+    <rect x="1282" y="374" width="186" height="108" rx="20" fill="url(#card)" stroke="#5EEAD4" stroke-opacity="0.24"/>
+    <text x="1312" y="412" fill="#ECFEFF" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700">Application APIs</text>
+    <text x="1313" y="443" fill="#CCFBF1" font-family="Helvetica, Arial, sans-serif" font-size="17">Shared policy use</text>
+
+    <path d="M1146 268H1192" stroke="url(#glow)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 10"/>
+    <path d="M1352 268H1378" stroke="url(#glow)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 10"/>
+    <path d="M1048 322V374" stroke="url(#glow)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 10"/>
+    <path d="M1272 322V374" stroke="url(#glow)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 10"/>
+    <path d="M1441 322V374" stroke="url(#glow)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 10"/>
+  </g>
+
+  <g opacity="0.9">
+    <text x="118" y="154" fill="#93C5FD" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="4">ONTO2AI ENTITLEMENT</text>
+    <text x="118" y="242" fill="#FFFFFF" font-family="Helvetica, Arial, sans-serif" font-size="64" font-weight="700">Fine-Grained Access Control</text>
+    <text x="118" y="320" fill="#FFFFFF" font-family="Helvetica, Arial, sans-serif" font-size="64" font-weight="700">Across Distributed Enterprise Data</text>
+    <text x="118" y="392" fill="#C7D2FE" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400">Ontology-driven entitlement management for users, policy groups, policies,</text>
+    <text x="118" y="430" fill="#C7D2FE" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="400">tables, columns, and downstream systems that share the same governed data.</text>
+  </g>
+
+  <g>
+    <rect x="118" y="510" width="468" height="212" rx="24" fill="url(#card)" stroke="#FFFFFF" stroke-opacity="0.16"/>
+    <text x="152" y="564" fill="#E2E8F0" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700">Central Entitlement Graph</text>
+
+    <rect x="152" y="595" width="112" height="46" rx="14" fill="#102A43" stroke="#93C5FD" stroke-opacity="0.55"/>
+    <text x="184" y="625" fill="#DBEAFE" font-family="Helvetica, Arial, sans-serif" font-size="21" font-weight="700">User</text>
+
+    <rect x="302" y="595" width="160" height="46" rx="14" fill="#102A43" stroke="#93C5FD" stroke-opacity="0.55"/>
+    <text x="331" y="625" fill="#DBEAFE" font-family="Helvetica, Arial, sans-serif" font-size="21" font-weight="700">PolicyGroup</text>
+
+    <rect x="152" y="661" width="122" height="46" rx="14" fill="#102A43" stroke="#5EEAD4" stroke-opacity="0.55"/>
+    <text x="179" y="691" fill="#CCFBF1" font-family="Helvetica, Arial, sans-serif" font-size="21" font-weight="700">Policy</text>
+
+    <rect x="312" y="661" width="104" height="46" rx="14" fill="#102A43" stroke="#5EEAD4" stroke-opacity="0.55"/>
+    <text x="331" y="691" fill="#CCFBF1" font-family="Helvetica, Arial, sans-serif" font-size="21" font-weight="700">Table</text>
+
+    <rect x="446" y="661" width="106" height="46" rx="14" fill="#102A43" stroke="#5EEAD4" stroke-opacity="0.55"/>
+    <text x="460" y="691" fill="#CCFBF1" font-family="Helvetica, Arial, sans-serif" font-size="21" font-weight="700">Column</text>
+
+    <path d="M264 618H302" stroke="url(#glow)" stroke-width="4" stroke-linecap="round"/>
+    <path d="M210 641V661" stroke="url(#glow)" stroke-width="4" stroke-linecap="round"/>
+    <path d="M382 641V661" stroke="url(#glow)" stroke-width="4" stroke-linecap="round"/>
+    <path d="M416 684H446" stroke="url(#glow)" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <g opacity="0.5">
+    <path d="M586 616C690 616 724 509 824 509" stroke="url(#glow)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M586 616C748 616 776 306 1000 306" stroke="url(#glow)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M586 616C834 616 868 306 1256 306" stroke="url(#glow)" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="586" cy="616" r="12" fill="#F8FAFC"/>
+    <circle cx="824" cy="509" r="10" fill="#67E8F9"/>
+    <circle cx="1000" cy="306" r="10" fill="#67E8F9"/>
+    <circle cx="1256" cy="306" r="10" fill="#67E8F9"/>
+  </g>
+
+  <g opacity="0.92">
+    <rect x="106" y="768" width="1388" height="1" fill="#FFFFFF" fill-opacity="0.14"/>
+    <text x="118" y="812" fill="#A5F3FC" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700">One ontology. One entitlement model. Consistent enforcement across distributed data.</text>
+  </g>
+</svg>
