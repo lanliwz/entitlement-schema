@@ -106,6 +106,9 @@ function labelText(node) {
 }
 
 function iconByLabel(label) {
+  if (label === "User") return "/static/icons/user.svg";
+  if (label === "PolicyGroup") return "/static/icons/group.svg";
+  if (label === "Policy") return "/static/icons/policy.svg";
   if (label === "Schema" || label === "RelationalDatabase") return "/static/icons/database.svg";
   if (label === "Table") return "/static/icons/table.svg";
   return "";
