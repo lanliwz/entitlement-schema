@@ -127,16 +127,25 @@ button.ghost {
   color: #243b53;
 }
 
-#propertiesPanel {
-  margin: 0;
-  padding: 12px;
-  background: #0f1720;
-  color: #d9e2ec;
-  border-radius: 8px;
+.kv-table {
+  width: 100%;
+  border-collapse: collapse;
   font-size: 12px;
-  line-height: 1.5;
-  white-space: pre-wrap;
+  table-layout: fixed;
+}
+
+.kv-table th,
+.kv-table td {
+  border: 1px solid #d9e2ec;
+  padding: 6px 8px;
+  vertical-align: top;
   word-break: break-word;
+}
+
+.kv-table th {
+  background: #f0f4f8;
+  color: #243b53;
+  text-align: left;
 }
 
 ul {

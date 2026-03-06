@@ -16,6 +16,15 @@ const colorByLabel = {
   Node: "#ced6e0",
 };
 
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function linkColorByType(type) {
   if (type === "hasRowRule") return "#1f77b4";
   if (type === "hasColumnRule") return "#e67e22";
@@ -30,7 +39,35 @@ function setStatus(text, isError = false) {
 
 function setSelection(title, obj) {
   document.getElementById("selectionTitle").textContent = title;
-  document.getElementById("propertiesPanel").textContent = JSON.stringify(obj, null, 2);
+  const tbody = document.querySelector("#propertiesTable tbody");
+  const src = obj || {};
+  const entries = [];
+  const hiddenKeys = new Set(["key", "label", "labels"]);
+
+  Object.entries(src).forEach(([k, v]) => {
+    if (k === "properties" && v && typeof v === "object" && !Array.isArray(v)) {
+      Object.entries(v).forEach(([pk, pv]) => {
+        if (hiddenKeys.has(pk)) return;
+        entries.push([pk, pv]);
+      });
+      return;
+    }
+    if (k !== "properties" && !hiddenKeys.has(k)) {
+      entries.push([k, v]);
+    }
+  });
+
+  if (!entries.length) {
+    tbody.innerHTML = "<tr><td colspan='2'>No properties</td></tr>";
+    return;
+  }
+  const rows = entries
+    .map(([k, v]) => {
+      const value = typeof v === "object" ? JSON.stringify(v) : String(v);
+      return `<tr><td>${escapeHtml(String(k))}</td><td>${escapeHtml(value)}</td></tr>`;
+    })
+    .join("");
+  tbody.innerHTML = rows;
 }
 
 function labelText(node) {
