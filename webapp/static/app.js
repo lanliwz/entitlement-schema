@@ -111,6 +111,16 @@ async function submitMembership(action, userId, groupId) {
   });
 }
 
+async function submitGroupPolicy(action, groupId, policyId) {
+  const endpoint =
+    action === "include" ? "/api/groups/includes-policy" : "/api/groups/excludes-policy";
+  await fetchJSON(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ group_id: groupId, policy_id: policyId }),
+  });
+}
+
 function ctxSection(title, items, onClick, labelBuilder) {
   const section = document.createElement("div");
   const heading = document.createElement("div");
@@ -201,7 +211,7 @@ async function showGroupContextMenu(groupNodeData, viewPoint) {
   if (!groupId) return;
   const menu = document.getElementById("userContextMenu");
   menu.classList.remove("hidden");
-  menu.innerHTML = "<div class='ctx-title'>Loading user options...</div>";
+  menu.innerHTML = "<div class='ctx-title'>Loading policy options...</div>";
   menu.style.left = `${Math.max(8, viewPoint.x)}px`;
   menu.style.top = `${Math.max(8, viewPoint.y)}px`;
 
@@ -214,38 +224,36 @@ async function showGroupContextMenu(groupNodeData, viewPoint) {
     menu.appendChild(title);
     menu.appendChild(
       ctxSection(
-        "Entitle users",
-        options.entitle_users || [],
-        async (u) => {
+        "Includes policy",
+        options.including_policies || [],
+        async (p) => {
           try {
-            await submitMembership("entitle", u.user_id, groupId);
-            setStatus(`Entitled ${u.user_id} to ${groupId}`);
+            await submitGroupPolicy("include", groupId, p.policy_id);
+            setStatus(`Included ${p.policy_id} in ${groupId}`);
             hideUserContextMenu();
             await loadGraph();
-            await loadSelectors();
           } catch (err) {
-            setStatus(`Failed to entitle user: ${err.message}`, true);
+            setStatus(`Failed to include policy: ${err.message}`, true);
           }
         },
-        (u) => u.user_id
+        (p) => `${p.policy_name || p.policy_id} (${p.policy_id})`
       )
     );
     menu.appendChild(
       ctxSection(
-        "Revoke users",
-        options.revoke_users || [],
-        async (u) => {
+        "Excludes policy",
+        options.excluding_policies || [],
+        async (p) => {
           try {
-            await submitMembership("revoke", u.user_id, groupId);
-            setStatus(`Revoked ${u.user_id} from ${groupId}`);
+            await submitGroupPolicy("exclude", groupId, p.policy_id);
+            setStatus(`Excluded ${p.policy_id} from ${groupId}`);
             hideUserContextMenu();
             await loadGraph();
-            await loadSelectors();
           } catch (err) {
-            setStatus(`Failed to revoke user: ${err.message}`, true);
+            setStatus(`Failed to exclude policy: ${err.message}`, true);
           }
         },
-        (u) => u.user_id
+        (p) => `${p.policy_name || p.policy_id} (${p.policy_id})`
       )
     );
   } catch (err) {

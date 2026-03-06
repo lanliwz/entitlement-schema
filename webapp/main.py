@@ -24,6 +24,11 @@ class MembershipRequest(BaseModel):
     group_id: str
 
 
+class GroupPolicyRequest(BaseModel):
+    group_id: str
+    policy_id: str
+
+
 def _neo4j_driver():
     cfg = get_config()["neo4j"]
     return GraphDatabase.driver(
@@ -192,25 +197,110 @@ def get_group_user_options(group_id: str):
 
             rows = session.run(
                 """
-                MATCH (u:User)
-                OPTIONAL MATCH (u)-[r:memberOf]->(:PolicyGroup {policyGroupId: $group_id})
-                RETURN u.userId AS userId, count(r) > 0 AS isMember
-                ORDER BY userId
+                MATCH (p:Policy)
+                OPTIONAL MATCH (:PolicyGroup {policyGroupId: $group_id})-[r:includesPolicy]->(p)
+                RETURN
+                  p.policyId AS policyId,
+                  p.policyName AS policyName,
+                  p.definition AS definition,
+                  count(r) > 0 AS isIncluded
+                ORDER BY policyName, policyId
                 """,
                 group_id=group_id,
             )
-            entitle_users = []
-            revoke_users = []
+            including_policies = []
+            excluding_policies = []
             for r in rows:
-                user_id = r["userId"]
-                if not user_id:
+                policy_id = r["policyId"]
+                if not policy_id:
                     continue
-                item = {"user_id": user_id}
-                if r["isMember"]:
-                    revoke_users.append(item)
+                item = {
+                    "policy_id": policy_id,
+                    "policy_name": r["policyName"],
+                    "definition": r["definition"],
+                }
+                if r["isIncluded"]:
+                    excluding_policies.append(item)
                 else:
-                    entitle_users.append(item)
-            return {"group_id": group_id, "entitle_users": entitle_users, "revoke_users": revoke_users}
+                    including_policies.append(item)
+            return {
+                "group_id": group_id,
+                "including_policies": including_policies,
+                "excluding_policies": excluding_policies,
+            }
+    finally:
+        driver.close()
+
+
+@app.post("/api/groups/includes-policy")
+def include_policy_for_group(req: GroupPolicyRequest):
+    driver, database = _neo4j_driver()
+    try:
+        with driver.session(database=database) as session:
+            found = session.run(
+                """
+                MATCH (pg:PolicyGroup {policyGroupId: $group_id}), (p:Policy {policyId: $policy_id})
+                RETURN pg.policyGroupId AS groupId, p.policyId AS policyId
+                """,
+                group_id=req.group_id,
+                policy_id=req.policy_id,
+            ).single()
+            if not found:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"PolicyGroup or Policy not found: {req.group_id}, {req.policy_id}",
+                )
+
+            session.run(
+                """
+                MATCH (pg:PolicyGroup {policyGroupId: $group_id})
+                MATCH (p:Policy {policyId: $policy_id})
+                MERGE (pg)-[:includesPolicy]->(p)
+                """,
+                group_id=req.group_id,
+                policy_id=req.policy_id,
+            ).consume()
+            return {"ok": True, "action": "include", "group_id": req.group_id, "policy_id": req.policy_id}
+    finally:
+        driver.close()
+
+
+@app.post("/api/groups/excludes-policy")
+def exclude_policy_for_group(req: GroupPolicyRequest):
+    driver, database = _neo4j_driver()
+    try:
+        with driver.session(database=database) as session:
+            found = session.run(
+                """
+                MATCH (pg:PolicyGroup {policyGroupId: $group_id}), (p:Policy {policyId: $policy_id})
+                RETURN pg.policyGroupId AS groupId, p.policyId AS policyId
+                """,
+                group_id=req.group_id,
+                policy_id=req.policy_id,
+            ).single()
+            if not found:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"PolicyGroup or Policy not found: {req.group_id}, {req.policy_id}",
+                )
+
+            summary = session.run(
+                """
+                MATCH (pg:PolicyGroup {policyGroupId: $group_id})-[r:includesPolicy]->(p:Policy {policyId: $policy_id})
+                DELETE r
+                RETURN count(r) AS deleted
+                """,
+                group_id=req.group_id,
+                policy_id=req.policy_id,
+            ).single()
+            deleted = int(summary["deleted"]) if summary and summary["deleted"] is not None else 0
+            return {
+                "ok": True,
+                "action": "exclude",
+                "group_id": req.group_id,
+                "policy_id": req.policy_id,
+                "deleted": deleted,
+            }
     finally:
         driver.close()
 
