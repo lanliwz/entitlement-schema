@@ -1,5 +1,7 @@
 # Onto2AI Entitlement
 
+![Onto2AI Entitlement Frontpage](resource/images/onto2ai-entitlement-article-frontpage.svg)
+
 ## Mission statement
 
 **Protecting sensitive data is no longer optional.**
